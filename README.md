@@ -209,6 +209,10 @@ module load cuda/12.1.0
 * **[Jaiswal 2019d]** Jaiswal, S., Pikus, A., Strongrich A., Sebastiao I. B., Hu, J., and Alexeenko, A. A. (2019)
   *Quantification of thermally-driven flows in microsystems using Boltzmann equation in deterministic and stochastic context.* Physics of Fluids 31(8): 082002. https://doi.org/10.1063/1.5108665
 
+Please cite this work as:
+
+Vorozhbit, E.; Morton, B.; Adhikari, N.; Alexeenko, A. A.; Hu, J. DGFS-BE Solver: An open-source Discontinuous Galerkin Fast Spectral Solver for the full Boltzmann equation. SoftwareX, 34 (2026), 102544. https://doi.org/10.1016/j.softx.2026.102544.
+
 ### License:
 *DGFS* is released as GNU GPLv2 open-source software. 
 This code has been derived from "PyFR". Please see licenses folder for restrictions.
