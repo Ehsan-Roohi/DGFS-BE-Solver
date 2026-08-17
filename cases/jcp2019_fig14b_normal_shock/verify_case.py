@@ -4,8 +4,11 @@
 from __future__ import annotations
 
 import configparser
+import importlib.util
 import math
 from pathlib import Path
+
+import numpy as np
 
 
 HERE = Path(__file__).resolve().parent
@@ -22,6 +25,52 @@ def section(lines: list[str], name: str) -> list[str]:
     start = lines.index(f"${name}")
     end = lines.index(f"$End{name}")
     return lines[start + 1 : end]
+
+
+def verify_1d_solver_core() -> None:
+    """Audit the point faces and 1D metric used by the actual solver."""
+    import frfs
+    from frfs.inifile import Inifile
+    from frfs.shapes import LineShape
+
+    solver_cfg = Inifile.load(str(CFG_PATH))
+    basis = LineShape(2, solver_cfg)
+    np.testing.assert_allclose(basis.fpts[:, 0], [-1.0, 1.0])
+    np.testing.assert_allclose(basis.fpts_wts, [1.0, 1.0])
+    if basis.gbasis_coeffs.shape != (2, 3):
+        raise AssertionError(f"invalid 1D correction-basis shape: {basis.gbasis_coeffs.shape}")
+
+    # Load BaseElements without importing optional runtime plugins.  This
+    # keeps the preflight inexpensive while exercising the production metric
+    # implementation from the selected solver checkout.
+    elements_path = Path(frfs.__file__).parent / "solvers/base/elements.py"
+    spec = importlib.util.spec_from_file_location("dgfs_elements_audit", elements_path)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+
+    class AuditElements(module.BaseElements):
+        privarmap = {1: ["u"]}
+        convarmap = privarmap
+
+        @property
+        def _scratch_bufs(self):
+            return set()
+
+        @staticmethod
+        def pri_to_con(pris, cfg):
+            return pris
+
+        def set_backend(self, backend, nscal_upts, nonce):
+            raise NotImplementedError
+
+    edges = np.linspace(-0.5, 0.5, 9)
+    elements = np.stack((edges[:-1], edges[1:]), axis=0)[..., None]
+    audit = AuditElements(LineShape, elements, solver_cfg)
+    smats, djacs = audit._smats_djacs_mpts
+    np.testing.assert_allclose(smats, 1.0)
+    np.testing.assert_allclose(djacs, 0.0625)
+    np.testing.assert_allclose(audit.rcpdjac_at_np("upts"), 16.0)
 
 
 def main() -> None:
@@ -48,6 +97,11 @@ def main() -> None:
     for (group, key), value in expected.items():
         close(cfg.getfloat(group, key), value, f"[{group}] {key}")
 
+    if cfg.get("solver-interfaces-point", "flux-pts") != "gauss-legendre":
+        raise AssertionError("1D point-interface quadrature is missing or invalid")
+    if cfg.get("solver-elements-line", "soln-pts") != "gauss-legendre-lobatto":
+        raise AssertionError("1D solution-point rule is missing or invalid")
+
     lines = [line.strip() for line in MESH_PATH.read_text().splitlines()]
     node_lines = section(lines, "Nodes")[1:]
     element_lines = section(lines, "Elements")[1:]
@@ -73,10 +127,13 @@ def main() -> None:
     if not cfg.getboolean("soln-plugin-dgfsresidualstd", "normalise"):
         raise AssertionError("the paper convergence normalization is disabled")
 
+    verify_1d_solver_core()
+
     print("JCP2019_FIG14B_CASE_VERIFIED")
     print(f"physical_length_mm={physical_length * 1e3:.6f}")
     print(f"elements={len(fluid_lines)}")
     print(f"dx_over_lambda={dx_over_lambda:.9f}")
+    print("one_dimensional_solver_core=verified")
 
 
 if __name__ == "__main__":

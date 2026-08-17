@@ -260,6 +260,7 @@ class BaseShape(object):
         #}
 
         qrule_map = {
+            'point': ('gauss-legendre', 1),
             'line': ('gauss-legendre-lobatto', self.order+1),
             'quad': ('gauss-legendre-lobatto', (self.order+1)**2)
         }        
@@ -359,10 +360,8 @@ class LineShape(TensorProdShape, BaseShape):
 
     # Faces: type, reference-to-face projection, normal
     faces = [
-        ('point', lambda s: (s,), (-1,)),
-        ('point', lambda s: (s,), (1,))
-        #('point', lambda s: (-1,), (-1,)),
-        #('point', lambda s: (1,), (1,))
+        ('point', lambda s: (-1,), (-1,)),
+        ('point', lambda s: (1,), (1,))
     ]
 
 class QuadShape(TensorProdShape, BaseShape):

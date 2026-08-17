@@ -2,7 +2,7 @@
 
 from ast import literal_eval
 from collections import OrderedDict
-from configparser import SafeConfigParser, NoSectionError, NoOptionError
+from configparser import ConfigParser, NoSectionError, NoOptionError
 import io
 import os
 import re
@@ -18,7 +18,7 @@ _sentinel = object()
 
 class Inifile(object):
     def __init__(self, inistr=None):
-        self._cp = cp = SafeConfigParser(inline_comment_prefixes=[';'])
+        self._cp = cp = ConfigParser(inline_comment_prefixes=[';'])
 
         # Preserve case
         cp.optionxform = str

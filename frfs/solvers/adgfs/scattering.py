@@ -186,7 +186,7 @@ class ADGFSBGKDirectGLLScatteringModel(ADGFSScatteringModel):
         q = (len(args) - 3)//4
         assert len(args)==4*q+3, "Inconsistency in number of parameters"
 
-        lda = np.int(args[-2].ioshape[0])
+        lda = int(args[-2].ioshape[0])
         grid = get_grid_for_block(self.block, lda)
         self.updateMomKernsBDF[q-1].prepared_call(grid, self.block, 
                 self._prefactor, lda, dt, *args)
@@ -210,7 +210,7 @@ class ADGFSBGKDirectGLLScatteringModel(ADGFSScatteringModel):
         q = (len(args) - 1)//4
         assert len(args)==4*q+1, "Inconsistency in number of parameters"
 
-        lda = np.int(args[-1].ioshape[0])
+        lda = int(args[-1].ioshape[0])
         grid = get_grid_for_block(self.block, lda)
         self.updateMomKernsARS[q-1].prepared_call(grid, self.block, 
                 self._prefactor, lda, dt, *args)
