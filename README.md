@@ -213,8 +213,15 @@ Please cite this work as:
 
 Vorozhbit, E.; Morton, B.; Adhikari, N.; Alexeenko, A. A.; Hu, J. DGFS-BE Solver: An open-source Discontinuous Galerkin Fast Spectral Solver for the full Boltzmann equation. SoftwareX, 34 (2026), 102544. https://doi.org/10.1016/j.softx.2026.102544.
 
+### Reproducible paper case
+
+The exact eight-element helium normal-shock case from Figure 14(b) of
+Jaiswal, Alexeenko, and Hu (JCP 378, 2019) is available in
+[`cases/jcp2019_fig14b_normal_shock`](cases/jcp2019_fig14b_normal_shock).
+It includes a Unity bootstrap, a paper-parameter audit, automatic checksums,
+and raw-DG versus exact cell-average post-processing.
+
 ### License:
 *DGFS* is released as GNU GPLv2 open-source software. 
 This code has been derived from "PyFR". Please see licenses folder for restrictions.
-
 
