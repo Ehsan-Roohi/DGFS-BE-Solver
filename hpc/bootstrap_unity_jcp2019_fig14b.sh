@@ -25,6 +25,8 @@ cp "$SOLVER_SRC/$CASE_REL/run.slurm" "$RUN_DIR/"
 chmod +x "$RUN_DIR/verify_case.py" "$RUN_DIR/plot_fig14b.py" "$RUN_DIR/run.slurm"
 
 (cd "$SOLVER_SRC" && "$DGFS_ENV/bin/python" "$CASE_REL/verify_case.py")
+PYTHONPATH="$SOLVER_SRC" "$DGFS_ENV/bin/python" -c \
+    'from frfs.backends import BaseBackend; from frfs.readers.native import NativeReader; print("DGFS_PYTHON_COMPATIBILITY_VERIFIED")'
 JOB_ID=$(cd "$RUN_DIR" && sbatch --parsable \
     --export=ALL,DGFS_ROOT="$DGFS_ROOT",DGFS_ENV="$DGFS_ENV",DGFS_SOLVER_SRC="$SOLVER_SRC" \
     ./run.slurm)
@@ -33,4 +35,3 @@ JOB_ID=${JOB_ID%%;*}
 echo "DGFS_JCP2019_FIG14B_JOB_ID=$JOB_ID"
 echo "DGFS_JCP2019_FIG14B_RUN_DIR=$RUN_DIR"
 echo "DGFS_JCP2019_FIG14B_BOOTSTRAP_COMPLETE"
-

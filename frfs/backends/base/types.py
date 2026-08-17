@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 
 from abc import ABCMeta, abstractmethod
-from collections import Sequence, deque
+from collections import deque
+from collections.abc import Sequence
 
 import numpy as np
 
