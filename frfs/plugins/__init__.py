@@ -5,6 +5,9 @@ from frfs.plugins.nancheck import NaNCheckPlugin
 from frfs.plugins.dgfsmomwriterstd import DGFSMomWriterStdPlugin
 from frfs.plugins.dgfsdistwriterstd import DGFSDistWriterStdPlugin
 from frfs.plugins.dgfsresidualstd import DGFSResidualStdPlugin
+from frfs.plugins.dgfskineticdiagnosticsstd import (
+    DGFSKineticDiagnosticsStdPlugin
+)
 from frfs.plugins.dgfsforcestd import DGFSForceStdPlugin
 from frfs.plugins.dgfsmomwriterbi import DGFSMomWriterBiPlugin
 from frfs.plugins.dgfsdistwriterbi import DGFSDistWriterBiPlugin

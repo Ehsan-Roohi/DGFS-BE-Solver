@@ -1,6 +1,7 @@
 # -*- coding: utf-8 -*-
 
-from collections import Mapping, OrderedDict
+from collections import OrderedDict
+from collections.abc import Mapping
 import os
 import re
 
