@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-from pkg_resources import resource_listdir, resource_string
+from importlib.resources import files
 import re
 
 import numpy as np
@@ -38,8 +38,8 @@ class BaseTabulatedQuadRule(object):
             pts = [p[0] for p in pts]
 
         # Cast
-        self.pts = np.array(pts, dtype=np.float)
-        self.wts = np.array(wts, dtype=np.float)
+        self.pts = np.array(pts, dtype=float)
+        self.wts = np.array(wts, dtype=float)
 
 
 class BaseStoredQuadRule(BaseTabulatedQuadRule):
@@ -47,7 +47,8 @@ class BaseStoredQuadRule(BaseTabulatedQuadRule):
     def _iter_rules(cls):
         rpaths = getattr(cls, '_rpaths', None)
         if rpaths is None:
-            cls._rpaths = rpaths = resource_listdir(__name__, cls.shape)
+            root = files(__name__).joinpath(cls.shape)
+            cls._rpaths = rpaths = [item.name for item in root.iterdir()]
 
         for path in rpaths:
             m = re.match(r'([a-zA-Z0-9\-~+]+)-n(\d+)'
@@ -78,8 +79,10 @@ class BaseStoredQuadRule(BaseTabulatedQuadRule):
             raise ValueError('No suitable quadrature rule found')
 
         # Load the rule
-        rule = resource_string(__name__, '{}/{}'.format(self.shape, best[0]))
-        super().__init__(rule.decode('utf-8'))
+        rule = files(__name__).joinpath(self.shape, best[0]).read_text(
+            encoding='utf-8'
+        )
+        super().__init__(rule)
 
 
 def get_quadrule(eletype, rule=None, npts=None, qdeg=None, flags=None):

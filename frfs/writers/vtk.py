@@ -7,7 +7,7 @@ import re
 import numpy as np
 
 from frfs.shapes import BaseShape
-from frfs.util import memoize, subclass_where
+from frfs.util import memoize, pad_vtk_points, subclass_where
 from frfs.writers import BaseWriter
 
 
@@ -15,6 +15,10 @@ class VTKWriter(BaseWriter):
     # Supported file types and extensions
     name = 'vtk'
     extn = ['.vtu', '.pvtu']
+
+    @staticmethod
+    def _pad_vis_points(vpts):
+        return pad_vtk_points(vpts)
 
     def __init__(self, args):
         super().__init__(args)
@@ -322,9 +326,8 @@ class VTKWriter(BaseWriter):
         vsoln = np.dot(soln_vtu_op, soln.reshape(len(soln), -1))
         vsoln = vsoln.reshape(nsvpts, -1, neles).swapaxes(0, 1)
 
-        # Append dummy z dimension for points in 2D
-        if self.ndims == 2:
-            vpts = np.pad(vpts, [(0, 0), (0, 0), (0, 1)], 'constant')
+        # VTK always stores point coordinates as x, y, z triples
+        vpts = self._pad_vis_points(vpts)
 
         # Write element node locations to file
         self._write_darray(vpts.swapaxes(0, 1), vtuf, self.dtype)
@@ -385,7 +388,7 @@ class TensorProdShapeSubDiv(BaseShapeSubDiv):
             conbase = np.hstack((conbase, conbase + (1 + n)**2))
 
         # Calculate offset of each subdivided element's nodes
-        nodeoff = np.zeros((n,)*cls.ndim, dtype=np.int)
+        nodeoff = np.zeros((n,)*cls.ndim, dtype=int)
         for dim, off in enumerate(np.ix_(*(range(n),)*cls.ndim)):
             nodeoff += off*(n + 1)**dim
 
@@ -409,7 +412,7 @@ class LineShapeSubDiv(BaseShapeSubDiv):
         conbase = np.array([0, 1])
 
         # Calculate offset of each subdivided element's nodes
-        nodeoff = np.zeros((n,)*cls.ndim, dtype=np.int)
+        nodeoff = np.zeros((n,)*cls.ndim, dtype=int)
         for dim, off in enumerate(np.ix_(*(range(n),)*cls.ndim)):
             nodeoff += off*(n + 1)**dim
 

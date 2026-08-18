@@ -1,0 +1,8 @@
+__pycache__/
+*.py[cod]
+.cuda-cache/
+*.frfsm
+*.frfss
+*.vtu
+slurm-*.out
+

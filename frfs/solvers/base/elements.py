@@ -329,7 +329,10 @@ class BaseElements(object, metaclass=ABCMeta):
         # added for 1D
         elif ndims == 1:
             a = jac[0, 0]
-            smats[0, :, 0] = a
+            # In one dimension adj(J) = 1.  The transformed flux is
+            # therefore unchanged, while the physical divergence obtains
+            # its 1/J scaling from rcpdjac.
+            smats[0, :, 0] = 1.0
             djacs = a
         else:
             dtt = []
