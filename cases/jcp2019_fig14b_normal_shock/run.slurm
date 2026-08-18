@@ -128,6 +128,18 @@ test -s "$FINAL_DIST"
 test -s "$FINAL_BULK"
 test -s kinetic_residual.csv
 
+# Audit every saved full-distribution snapshot.  This is deliberately run at
+# each segment, including non-converged checkpoints, so phase drift and tiny
+# negative velocity-tail values are visible before another expensive restart.
+if python -c 'import matplotlib' >/dev/null 2>&1; then
+    python diagnose_fig14b.py --run-dir .
+else
+    python diagnose_fig14b.py --run-dir . --no-figure
+    echo "DIAGNOSTICS_FIGURE_SKIPPED: matplotlib is not installed in $DGFS_ENV"
+fi
+test -s dgfs_diagnostics.json
+test -s dgfs_diagnostics.csv
+
 CONVERGED=0
 if python check_convergence.py --csv kinetic_residual.csv \
         --segment-start "$START" --segment-end "$END" --dt "$NOMINAL_DT" \
@@ -202,9 +214,13 @@ touch DGFS_JCP2019_FIG14B_SUCCESS
 CHECKSUM_FILES=(dgfs_fig14b.ini mesh_fig14b_8elem.msh mesh.frfsm
     dist_dgfs_fig14b-final.frfss bulksol_dgfs_fig14b-final.frfss
     fig14b_final.vtu kinetic_residual.csv RUN_METADATA.txt run.slurm
-    check_convergence.py DGFS_JCP2019_FIG14B_SUCCESS "$CONV_JSON")
+    check_convergence.py diagnose_fig14b.py dgfs_diagnostics.json
+    dgfs_diagnostics.csv DGFS_JCP2019_FIG14B_SUCCESS "$CONV_JSON")
 if [[ -s fig14b_raw_and_cell_average.png ]]; then
     CHECKSUM_FILES+=(fig14b_raw_and_cell_average.png fig14b_extrema.json)
+fi
+if [[ -s dgfs_diagnostics.png ]]; then
+    CHECKSUM_FILES+=(dgfs_diagnostics.png)
 fi
 sha256sum "${CHECKSUM_FILES[@]}" > SHA256SUMS.txt
 
