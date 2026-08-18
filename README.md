@@ -219,9 +219,9 @@ The exact eight-element helium normal-shock case from Figure 14(b) of
 Jaiswal, Alexeenko, and Hu (JCP 378, 2019) is available in
 [`cases/jcp2019_fig14b_normal_shock`](cases/jcp2019_fig14b_normal_shock).
 It includes a Unity bootstrap, a paper-parameter audit, automatic checksums,
-and raw-DG versus exact cell-average post-processing.
+SSP-RK2 checkpoint continuation to the paper convergence threshold, and
+raw-DG versus exact cell-average post-processing.
 
 ### License:
 *DGFS* is released as GNU GPLv2 open-source software. 
 This code has been derived from "PyFR". Please see licenses folder for restrictions.
-

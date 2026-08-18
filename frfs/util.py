@@ -167,6 +167,19 @@ def digest(*args, hash='sha256'):
     return getattr(hashlib, hash)(pickle.dumps(args)).hexdigest()
 
 
+def pad_vtk_points(vpts):
+    """Return VTK-compatible three-component point coordinates."""
+    import numpy as np
+
+    ndims = vpts.shape[-1]
+    if ndims > 3:
+        raise ValueError('VTK point coordinates cannot exceed 3-D')
+    if ndims < 3:
+        vpts = np.pad(vpts, [(0, 0), (0, 0), (0, 3 - ndims)],
+                      'constant')
+    return vpts
+
+
 def rm(path):
     if os.path.isfile(path) or os.path.islink(path):
         os.remove(path)

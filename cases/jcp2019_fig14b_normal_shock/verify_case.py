@@ -32,6 +32,7 @@ def verify_1d_solver_core() -> None:
     import frfs
     from frfs.inifile import Inifile
     from frfs.shapes import LineShape
+    from frfs.util import pad_vtk_points
 
     solver_cfg = Inifile.load(str(CFG_PATH))
     basis = LineShape(2, solver_cfg)
@@ -71,6 +72,14 @@ def verify_1d_solver_core() -> None:
     np.testing.assert_allclose(smats, 1.0)
     np.testing.assert_allclose(djacs, 0.0625)
     np.testing.assert_allclose(audit.rcpdjac_at_np("upts"), 16.0)
+
+    # A one-dimensional VTK file still requires x/y/z point triples.
+    points = np.arange(6.0).reshape(2, 3, 1)
+    padded = pad_vtk_points(points)
+    if padded.shape != (2, 3, 3):
+        raise AssertionError(f"invalid padded VTK point shape: {padded.shape}")
+    np.testing.assert_allclose(padded[..., 0], points[..., 0])
+    np.testing.assert_allclose(padded[..., 1:], 0.0)
 
 
 def main() -> None:
@@ -126,6 +135,8 @@ def main() -> None:
         raise AssertionError("the paper convergence criterion must be sampled every step")
     if not cfg.getboolean("soln-plugin-dgfsresidualstd", "normalise"):
         raise AssertionError("the paper convergence normalization is disabled")
+    if cfg.get("solver-time-integrator", "scheme") != "dgfs-tvd-rk2":
+        raise AssertionError("the exact case must use the SSP-RK2 DGFS stepper")
 
     verify_1d_solver_core()
 
@@ -134,6 +145,7 @@ def main() -> None:
     print(f"elements={len(fluid_lines)}")
     print(f"dx_over_lambda={dx_over_lambda:.9f}")
     print("one_dimensional_solver_core=verified")
+    print("time_integrator=SSP-RK2")
 
 
 if __name__ == "__main__":

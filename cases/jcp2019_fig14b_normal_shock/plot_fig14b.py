@@ -7,6 +7,7 @@ import argparse
 import configparser
 import json
 from pathlib import Path
+import re
 
 import h5py
 import matplotlib.pyplot as plt
@@ -31,6 +32,7 @@ def lagrange_gll2(r: np.ndarray) -> np.ndarray:
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--run-dir", type=Path, default=Path("."))
+    ap.add_argument("--bulk-soln", type=Path)
     ap.add_argument("--output", type=Path, default=Path("fig14b_raw_and_cell_average.png"))
     args = ap.parse_args()
     run = args.run_dir.resolve()
@@ -47,7 +49,22 @@ def main() -> None:
 
     with h5py.File(run / "mesh.frfsm", "r") as h5:
         mesh = h5["spt_line_p0"][()]
-    with h5py.File(run / "bulksol_dgfs_fig14b-10.0.frfss", "r") as h5:
+    if args.bulk_soln:
+        bulk_soln = args.bulk_soln
+        if not bulk_soln.is_absolute():
+            bulk_soln = run / bulk_soln
+    else:
+        candidates = list(run.glob("bulksol_dgfs_fig14b-*.frfss"))
+        if not candidates:
+            raise FileNotFoundError("no bulksol_dgfs_fig14b-*.frfss file found")
+
+        def output_time(path: Path) -> float:
+            match = re.search(r"-([0-9]+(?:\.[0-9]+)?)\.frfss$", path.name)
+            return float(match.group(1)) if match else float("-inf")
+
+        bulk_soln = max(candidates, key=output_time)
+
+    with h5py.File(bulk_soln, "r") as h5:
         moments = h5["moments_line_p0"][()]
         stats = ini_from_h5(h5["stats"][()])
 
@@ -135,6 +152,7 @@ def main() -> None:
 
     report = {
         "output": str(output),
+        "bulk_solution": str(bulk_soln),
         "shock_center_mm": x_shock * h0 * 1e3,
         "raw_extrema": {key: [float(np.min(dense[key])), float(np.max(dense[key]))] for key in FIELD_NAMES},
         "cell_average_extrema": {

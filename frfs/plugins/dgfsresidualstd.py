@@ -21,6 +21,11 @@ class DGFSResidualStdPlugin(BasePlugin):
         self.isoutf = self.cfg.getint(cfgsect, 'output-file', 0)
         self.normalise = self.cfg.getbool(cfgsect, 'normalise', False)
         self._normalisation_resid = None
+        if self.cfg.hasopt(cfgsect, 'normalisation-resid'):
+            reference = self.cfg.getfloat(cfgsect, 'normalisation-resid')
+            if not np.isfinite(reference) or reference <= 0:
+                raise ValueError('normalisation-resid must be positive')
+            self._normalisation_resid = np.array([reference])
 
         # The root rank needs to open the output file
         if rank == root and self.isoutf:
@@ -70,7 +75,8 @@ class DGFSResidualStdPlugin(BasePlugin):
                 # With one-based paper indexing, the reference is the change
                 # between accepted steps one and two.
                 if self.normalise:
-                    if intg.nacptsteps == 2:
+                    if (intg.nacptsteps == 2 and
+                            self._normalisation_resid is None):
                         self._normalisation_resid = resid.copy()
 
                     if self._normalisation_resid is None:
