@@ -5,7 +5,7 @@ trap 'rc=$?; echo "DGFS_JCP2019_FIG14B_BOOTSTRAP_FAILED rc=$rc line=$LINENO"; ex
 DGFS_ROOT=${DGFS_ROOT:-/project/pi_roohie_umass_edu/DGFS_BE}
 DGFS_ENV=${DGFS_ENV:-$DGFS_ROOT/dgfs_py310}
 DGFS_REPO=${DGFS_REPO:-https://github.com/Ehsan-Roohi/DGFS-BE-Solver.git}
-DGFS_REF=${DGFS_REF:-agent/jcp2019-fig14b-exact}
+DGFS_REF=${DGFS_REF:-agent/phase1-diagnostics}
 DGFS_MAX_SEGMENTS=${DGFS_MAX_SEGMENTS:-30}
 STAMP=$(date +%Y%m%d_%H%M%S)
 RUN_DIR="$DGFS_ROOT/runs/normal_shock_M1p59_jcp2019_fig14b_$STAMP"
@@ -22,10 +22,12 @@ cp "$SOLVER_SRC/$CASE_REL/dgfs_fig14b.ini" "$RUN_DIR/"
 cp "$SOLVER_SRC/$CASE_REL/mesh_fig14b_8elem.msh" "$RUN_DIR/"
 cp "$SOLVER_SRC/$CASE_REL/verify_case.py" "$RUN_DIR/"
 cp "$SOLVER_SRC/$CASE_REL/plot_fig14b.py" "$RUN_DIR/"
+cp "$SOLVER_SRC/$CASE_REL/diagnose_fig14b.py" "$RUN_DIR/"
 cp "$SOLVER_SRC/$CASE_REL/check_convergence.py" "$RUN_DIR/"
 cp "$SOLVER_SRC/$CASE_REL/run.slurm" "$RUN_DIR/"
 chmod +x "$RUN_DIR/verify_case.py" "$RUN_DIR/plot_fig14b.py" \
-    "$RUN_DIR/check_convergence.py" "$RUN_DIR/run.slurm"
+    "$RUN_DIR/diagnose_fig14b.py" "$RUN_DIR/check_convergence.py" \
+    "$RUN_DIR/run.slurm"
 
 (cd "$SOLVER_SRC" && PYTHONPATH="$SOLVER_SRC" \
     "$DGFS_ENV/bin/python" "$CASE_REL/verify_case.py")
