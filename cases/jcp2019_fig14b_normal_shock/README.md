@@ -98,3 +98,36 @@ To diagnose an existing run directory without submitting a new job:
 ```bash
 python diagnose_fig14b.py --run-dir .
 ```
+
+## Phase-two collision audit
+
+The phase-two job evaluates the existing fast-spectral `Q(f,f)` directly at
+all 24 DG solution points of the latest saved time-30 snapshot.  It does not
+advance the shock solution.  For each point it records:
+
+- cancellation defects in mass, three momentum components, and kinetic energy;
+- `L1`, `L2`, and `Linf` norms of `Q`;
+- input positivity and negative-tail mass;
+- synchronized GPU collision time over repeated evaluations;
+- `Q(M,M)` and entropy production for a positive Maxwellian control.
+
+The current serial implementation is timed without data-loading or FFT-plan
+warm-up.  The resulting median time is the baseline for the later batched
+collision implementation.  A failed tolerance is reported in JSON/CSV but does
+not discard the diagnostic output.
+
+Submit the short audit on Unity with:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Ehsan-Roohi/DGFS-BE-Solver/agent/phase2-collision-audit/hpc/bootstrap_unity_collision_audit.sh | bash
+```
+
+The bootstrap automatically selects the newest
+`dist_dgfs_fig14b-30.0.frfss`.  To select another snapshot explicitly:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/Ehsan-Roohi/DGFS-BE-Solver/agent/phase2-collision-audit/hpc/bootstrap_unity_collision_audit.sh | DGFS_SNAPSHOT=/absolute/path/to/dist.frfss bash
+```
+
+The run directory is short (`$DGFS_ROOT/p2_<timestamp>`), and the finished ZIP
+and checksum are written directly under `$DGFS_ROOT`.
