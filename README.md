@@ -24,6 +24,10 @@ The overall schemes are simple from mathematical and implementation perspective;
 
 ### Requirements:
 
+Local research additions to this fork are tracked in
+[`RESEARCH_STATUS.md`](RESEARCH_STATUS.md) and remain drafts until their real
+CUDA/Unity execution gates pass.
+
 System Requirements:
 	•	Linux OS (Ubuntu, CentOS, etc.)
 	•	GCC ≥ 6.3.0
@@ -216,5 +220,4 @@ Vorozhbit, E.; Morton, B.; Adhikari, N.; Alexeenko, A. A.; Hu, J. DGFS-BE Solver
 ### License:
 *DGFS* is released as GNU GPLv2 open-source software. 
 This code has been derived from "PyFR". Please see licenses folder for restrictions.
-
 
