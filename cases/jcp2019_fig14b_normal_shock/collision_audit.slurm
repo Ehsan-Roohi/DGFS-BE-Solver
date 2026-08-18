@@ -69,7 +69,7 @@ sha256sum collision_audit.json collision_audit.csv audit_collision.py \
 
 ZIP="$DGFS_ROOT/collision_audit_${SLURM_JOB_ID:-manual}.zip"
 zip -q -j -9 "$ZIP" collision_audit.json collision_audit.csv \
-    audit_collision.py case.ini RUN_METADATA.txt SNAPSHOT_SOURCE.txt SNAPSHOT_SHA256.txt \
+    audit_collision.py case.ini mesh.frfsm RUN_METADATA.txt SNAPSHOT_SOURCE.txt SNAPSHOT_SHA256.txt \
     SHA256SUMS.txt COLLISION_AUDIT_SUCCESS "slurm-${SLURM_JOB_ID}.out"
 zip -T "$ZIP"
 sha256sum "$ZIP" > "$ZIP.sha256.txt"
