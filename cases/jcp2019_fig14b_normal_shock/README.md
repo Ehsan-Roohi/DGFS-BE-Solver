@@ -38,7 +38,7 @@ Figure 14(b).
 Run this on a Unity login node:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Ehsan-Roohi/DGFS-BE-Solver/agent/jcp2019-fig14b-exact/hpc/bootstrap_unity_jcp2019_fig14b.sh | bash
+curl -fsSL https://raw.githubusercontent.com/Ehsan-Roohi/DGFS-BE-Solver/agent/phase1-diagnostics/hpc/bootstrap_unity_jcp2019_fig14b.sh | bash
 ```
 
 The bootstrap creates a timestamped, self-contained run directory under
@@ -59,11 +59,42 @@ cell averages, records checksums, and produces the final ZIP archive.
 For example, to cap the continuation at 12 segments:
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/Ehsan-Roohi/DGFS-BE-Solver/agent/jcp2019-fig14b-exact/hpc/bootstrap_unity_jcp2019_fig14b.sh | DGFS_MAX_SEGMENTS=12 bash
+curl -fsSL https://raw.githubusercontent.com/Ehsan-Roohi/DGFS-BE-Solver/agent/phase1-diagnostics/hpc/bootstrap_unity_jcp2019_fig14b.sh | DGFS_MAX_SEGMENTS=12 bash
 ```
 
 To validate this case without launching the solver:
 
 ```bash
 python cases/jcp2019_fig14b_normal_shock/verify_case.py
+```
+
+## Phase-one kinetic diagnostics
+
+Every completed segment now audits all paired `dist_*` and `bulksol_*`
+snapshots before deciding whether to continue.  The audit writes:
+
+- `dgfs_diagnostics.json`: the complete machine-readable record;
+- `dgfs_diagnostics.csv`: one compact row per snapshot;
+- `dgfs_diagnostics.png`: shock phase, positivity, open-domain inventories,
+  and full-distribution residuals before and after phase alignment.
+
+The positivity audit records `min(f)`, the number of negative velocity-tail
+values, and their integrated negative-mass fraction.  It also checks raw DG
+polynomials and exact GLL cell averages for plateau overshoot in density,
+velocity, temperature, and pressure, plus positive heat-flux side lobes.
+
+The phase-aligned residual translates the older full distribution by the
+measured density-midpoint displacement before evaluating its normalized
+phase-space L2 change.  It is an additional diagnostic and does **not** replace
+the residual or convergence threshold reported in the paper.
+
+The integrated mass, momentum, energy, and H values are explicitly labelled
+as open-domain inventories.  They are not time-conservation errors because the
+normal-shock boundaries exchange particles with reservoirs.  A later online
+collision audit will measure the five invariants of `Q(f,f)` directly.
+
+To diagnose an existing run directory without submitting a new job:
+
+```bash
+python diagnose_fig14b.py --run-dir .
 ```
