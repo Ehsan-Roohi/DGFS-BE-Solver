@@ -385,6 +385,10 @@ class GPUConservativeProjector:
             raise ValueError(f"GPU weighting must be one of {GPU_WEIGHTINGS}")
         if solve not in ("device", "host"):
             raise ValueError("solve must be 'device' or 'host'")
+        if np.dtype(backend.fpdtype) != np.dtype(np.float64):
+            raise TypeError("phase-3 GPU projection kernels require precision = double")
+        if nblocks < 1 or nthreads < 1 or nthreads & (nthreads - 1):
+            raise ValueError("nblocks must be positive and nthreads must be a power of two")
         from pycuda import compiler, gpuarray
 
         self.gpuarray = gpuarray
