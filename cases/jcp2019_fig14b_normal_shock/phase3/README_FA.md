@@ -34,16 +34,13 @@ curl -fsSL https://raw.githubusercontent.com/Ehsan-Roohi/DGFS-BE-Solver/agent/ph
 
 حل ۵×۵ به‌صورت پیش‌فرض روی device انجام می‌شود و در هر نقطه با numpy مقایسه می‌شود (گیت G0). اگر G0 شکست خورد، با `DGFS_P3_GPU_SOLVE=host` تکرار کنید.
 
-## اجرای مرحلهٔ ۳b (فقط اگر ۳a پاس شد)
+## اجرای مرحلهٔ ۳b (پس از PASS شدن ۳a)
 
 ```bash
-mkdir p3b && cd p3b
-cp <run>/dgfs_fig14b.ini <run>/mesh.frfsm <run>/dist_dgfs_fig14b-30.0.frfss <run>/kinetic_residual.csv .
-cp -r <pkg>/p3 <pkg>/solver_hook . ; mkdir source && git clone --depth 1 --branch agent/phase2-collision-audit https://github.com/Ehsan-Roohi/DGFS-BE-Solver.git source/DGFS-BE-Solver
-sbatch <pkg>/hpc/p3b_restarts.slurm
+curl -fsSL https://raw.githubusercontent.com/Ehsan-Roohi/DGFS-BE-Solver/agent/phase3-angular-conservative-audit/hpc/bootstrap_unity_p3b.sh | bash
 ```
 
-ران‌های پیشنهادی ۳b: `M6_raw:32:6:none, M6_fplus:32:6:fplus, M16_raw:16:16:none, M16_fplus:16:16:fplus`. وزن signed-`f` فقط یک تشخیص عددی است؛ چون snapshot دنباله‌های منفی دارد، نامزد تولیدی `fplus=max(f,0)` است. گزینهٔ کانفیگ: `[scattering-model] projection = none|euclidean|f|fplus` و `projection-solve = device|host`. با `projection = none` مسیر حل‌گر قبلی حفظ می‌شود.
+چهار ران کوتاه: `M6_raw:32:6:none, M16_raw:16:16:none, M16_fplus:16:16:fplus, M24_raw:16:24:none`. وزن signed-`f` فقط یک تشخیص عددی است؛ چون snapshot دنباله‌های منفی دارد، نامزد تولیدی `fplus=max(f,0)` است. پیش از time integration، تست GPU روی آرایهٔ واقعی `(upt, velocity, element)` اجرا می‌شود. خروجی شامل مقایسهٔ pointwise، cell-average، overshoot، منفی‌شدن، شار گرما، تنش و اختلاف RMS با مرجع M24 است.
 
 ## گیت‌ها (مقادیر پیش‌فرض، همه با سوییچ قابل تغییر)
 
@@ -86,6 +83,6 @@ sbatch <pkg>/hpc/p3b_restarts.slurm
 
 ## نکات پیاده‌سازی
 - کرنل‌های projection: (۱) کاهش ۲۰ ممان (۵ ممان Q + ۱۵ درایهٔ گرام وزن‌دار) روی ۱۲۸ بلوک × ۲۵۶ نخ، (۲) کاهش نهایی + مقیاس قطری + حذف گاوسی با pivot در یک بلوک، (۳) اعمال Q ← Q − w·(Bᵀλ). همه double. هزینهٔ مورد انتظار ≪ 0.1 ms در هر نقطه.
-- `fplus` = وزن max(f,0) (به‌لحاظ ریاضی تضمین عدم تولید منفی وقتی dt·max|Bᵀλ|<1)، `maxwellian` فقط در numpy (برای مقایسه).
+- `fplus` = وزن max(f,0). در این snapshot هیچ گرهٔ تازه‌منفی ایجاد نکرد، اما این مشاهده تضمین عمومی positivity نیست. `maxwellian` فقط در numpy و برای مقایسه استفاده می‌شود.
 - اگر تخصیص حافظهٔ GPU برای سه quadrature پشت‌سرهم مشکل‌ساز شد، هر quadrature را جداگانه با `DGFS_P3_QUADRATURES=16:16` اجرا کنید؛ فایل‌های `p3_partial_*.json` نوشته می‌شوند.
 - کد CUDA روی این ماشین کامپایل نشده است (GPU در دسترس نبود)؛ گیت G0 دقیقاً برای گرفتن هر خطای احتمالی کرنل گذاشته شده است.
