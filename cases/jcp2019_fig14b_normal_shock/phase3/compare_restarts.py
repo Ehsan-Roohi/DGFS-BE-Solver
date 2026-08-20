@@ -2,16 +2,10 @@
 
 The script computes per-point physical moments from the full distributions,
 domain inventories, overshoot and negativity diagnostics, final residuals, and
-wall times.  Reference and restart times are read from file metadata; no
+wall times. Reference and restart times are read from file metadata; no
 specific start time is assumed.
-"""Compare the phase-3b short restarts (t = 30 -> 30.1): per-point moments computed
-directly from the full distributions (rho, u_x, u_z, T, viscous normal stress
-P_xx - p, heat flux q_x, negativity), domain inventories (mass, momentum, energy,
-H) relative to the t=30 reference, final residuals, and wall time.
-
-    python compare_restarts.py --config dgfs_fig14b.ini --mesh mesh.frfsm \
-        --reference dist_dgfs_fig14b-30.0.frfss --runs run_M6_raw run_M6_fw run_M16_raw run_M16_fw
 """
+
 from __future__ import annotations
 
 import argparse
