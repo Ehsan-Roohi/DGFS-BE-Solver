@@ -166,7 +166,7 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", type=Path, required=True)
     ap.add_argument("--mesh", type=Path, required=True)
-    ap.add_argument("--reference", type=Path, required=True, help="t=30 full distribution")
+    ap.add_argument("--reference", type=Path, required=True, help="reference full distribution")
     ap.add_argument("--runs", type=Path, nargs="+", required=True)
     ap.add_argument("--tend", type=float, default=30.1)
     ap.add_argument("--tstart", type=float, default=30.0)
@@ -270,7 +270,9 @@ def main() -> None:
                          "rms_uz_vs_M24": r["profile_rms_diff_vs_M24_raw"]["uz"]})
     lines = ["| run | Nrho | M | proj | steps | wall s | resid raw | resid norm | dM/M | dP_x | dP_z | dE/E | dH | max|u_z| m/s | min f | negmass | x_shock mm |",
              "|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|---|"]
-    lines.append(f"| reference t=30 | | | | | | | | | | | | | {ref['max_abs_uz_m_per_s']:.3e} | {ref['min_f']:.2e} | "
+    ref_time = ref.get("tcurr")
+    ref_label = f"reference t={ref_time:g}" if ref_time is not None else "reference"
+    lines.append(f"| {ref_label} | | | | | | | | | | | | | {ref['max_abs_uz_m_per_s']:.3e} | {ref['min_f']:.2e} | "
                  f"{ref['max_negative_mass_fraction']:.2e} | {ref['shock_position_nondim']*H0*1e3 if ref['shock_position_nondim'] is not None else float('nan'):.4f} |")
     for r in runs:
         rf = r["residual_final"] or {}; ch = r["inventory_change_vs_reference"]
