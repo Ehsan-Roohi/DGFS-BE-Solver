@@ -4,23 +4,21 @@ from __future__ import annotations
 import argparse, csv, json, math
 from pathlib import Path
 
-def ordered_profile(record, key):
-    return [record["points"][u][e][key] for e in range(len(record["points"][0])) for u in range(len(record["points"]))]
+def cell_profile(record, key):
+    """Return exact GLL cell averages; safe to connect across elements."""
+    return record["cell_averages"][key]
 
 def svg_plot(path, report):
     width, height = 1000, 620
     left, right, top, bottom = 105, 35, 55, 90
     pw, ph = width-left-right, height-top-bottom
     ne = len(report["reference"]["points"][0])
-    xs = []
-    for e in range(ne):
-        xl, xr = -15.0+30.0*e/ne, -15.0+30.0*(e+1)/ne
-        xs.extend((xl, 0.5*(xl+xr), xr))
+    xs = [-15.0 + 30.0*(e + 0.5)/ne for e in range(ne)]
     u0 = report["nondim"]["u0"]
-    curves = [("t=30 reference", ordered_profile(report["reference"], "uz"), "#777777", "5,5")]
+    curves = [("t=30 reference", cell_profile(report["reference"], "uz"), "#777777", "5,5")]
     colors = {"run_M16_raw":"#d07a3e", "run_M16_fplus":"#355da8", "run_M24_raw":"#111111"}
     for run in report["runs"]:
-        curves.append((run["run"], ordered_profile(run, "uz"), colors[run["run"]], ""))
+        curves.append((run["run"], cell_profile(run, "uz"), colors[run["run"]], ""))
     curves = [(n,[v*u0 for v in y],c,d) for n,y,c,d in curves]
     ymin, ymax = min(min(y) for _,y,_,_ in curves), max(max(y) for _,y,_,_ in curves)
     pad=max(.05*(ymax-ymin),.02); ymin-=pad; ymax+=pad
