@@ -50,13 +50,15 @@ fi
 
 touch P4A_SUCCESS
 ZIP="$DGFS_ROOT/p4a_${JOB}.zip"
-TMP=$(mktemp "$DGFS_ROOT/.p4a_${JOB}.XXXXXX.zip")
-trap 'rm -f "$TMP"' EXIT
+STAGE=$(mktemp -d "$DGFS_ROOT/.p4a_${JOB}.XXXXXX")
+TMP="$STAGE/p4a.zip"
+trap 'rm -rf -- "$STAGE"' EXIT
 zip -q -9 -r "$TMP" p4a_* P4A_SUCCESS gpu_layout_preflight.log configs run_* p3 solver_hook INPUT.txt \
   dgfs_fig14b.ini mesh.frfsm dist_dgfs_fig14b-0.0.frfss "slurm-$JOB.out" \
   -x '*/__pycache__/*' '*.pyc' 'run_*/dist_dgfs_fig14b-0.0.frfss'
 zip -T "$TMP"
 mv -f "$TMP" "$ZIP"
+rm -rf -- "$STAGE"
 trap - EXIT
 sha256sum "$ZIP" > "$ZIP.sha256.txt"
 echo P4A_VERIFIED_COMPLETE
