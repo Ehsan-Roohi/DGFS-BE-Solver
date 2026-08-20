@@ -61,12 +61,26 @@ python p3/compare_restarts.py --config dgfs_fig14b.ini --mesh mesh.frfsm \
   --output-cell-figure p4a_cell_averages.png 2>&1 | tee p4a_compare.log
 python p3/p4a_assess.py --comparison p4a_comparison.json 2>&1 | tee p4a_assess.log
 grep -q P4A_ASSESSMENT_PASS p4a_assess.log
-python p3/p3c_physical_profiles.py --comparison p4a_comparison.json --mach 1.59 \
-  --profiles-png p4a_physical_profiles_24points.png \
-  --profiles-pdf p4a_physical_profiles_24points.pdf \
-  --differences-png p4a_physical_differences.png \
-  --differences-pdf p4a_physical_differences.pdf \
-  --csv p4a_physical_profiles_24points.csv
+# Plotting is post-processing: a missing optional plotting dependency must not
+# turn a scientifically completed solver run into a failed batch job.
+PLOT_PY=""
+for py in "$DGFS_ENV/bin/python" "$(command -v python3 2>/dev/null || true)" "$(command -v python 2>/dev/null || true)"; do
+  if [[ -n "$py" && -x "$py" ]] && "$py" -c 'import matplotlib, numpy' >/dev/null 2>&1; then
+    PLOT_PY=$py
+    break
+  fi
+done
+if [[ -n "$PLOT_PY" ]]; then
+  "$PLOT_PY" p3/p3c_physical_profiles.py --comparison p4a_comparison.json --mach 1.59 \
+    --profiles-png p4a_physical_profiles_24points.png \
+    --profiles-pdf p4a_physical_profiles_24points.pdf \
+    --differences-png p4a_physical_differences.png \
+    --differences-pdf p4a_physical_differences.pdf \
+    --csv p4a_physical_profiles_24points.csv
+  echo "P4A_FIGURES_COMPLETE python=$PLOT_PY"
+else
+  echo P4A_FIGURES_SKIPPED_NO_MATPLOTLIB
+fi
 touch P4A_SUCCESS
 ZIP="$DGFS_ROOT/p4a_${SLURM_JOB_ID:-manual}.zip"
 zip -q -9 -r "$ZIP" p4a_* gpu_layout_preflight.log configs run_* p3 solver_hook INPUT.txt \
