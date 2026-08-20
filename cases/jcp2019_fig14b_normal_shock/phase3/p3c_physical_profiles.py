@@ -1,5 +1,10 @@
 #!/usr/bin/env python3
-"""Plot P3C shock profiles in SI units using exact GLL cell averages."""
+"""Plot the Ma=1.59 P3C normal-shock profiles and angular-rule differences.
+
+All 24 DG solution values are retained (8 elements x 3 GLL nodes). Each
+element is drawn as a separate three-node segment, so discontinuous traces at
+element interfaces are never joined by an artificial vertical line.
+"""
 from __future__ import annotations
 
 import argparse
@@ -15,25 +20,47 @@ import numpy as np
 
 RUN_ORDER = ("run_M16_raw", "run_M16_fplus", "run_M24_raw")
 LABELS = {
-    "reference": r"inherited $t=30$",
-    "run_M16_raw": r"$M=16$, raw",
-    "run_M16_fplus": r"$M=16$, conservative $f^+$",
-    "run_M24_raw": r"$M=24$, raw",
+    "run_M16_raw": r"angular $M_\Omega=16$, raw",
+    "run_M16_fplus": r"angular $M_\Omega=16$, conservative $f^+$",
+    "run_M24_raw": r"angular $M_\Omega=24$, raw",
 }
-STYLES = {
-    "reference": dict(color="#808080", ls="--", marker="D"),
-    "run_M16_raw": dict(color="#BC6C25", ls="-", marker="^"),
-    "run_M16_fplus": dict(color="#355FA3", ls="-", marker="o"),
-    "run_M24_raw": dict(color="#111111", ls="-", marker="s"),
-}
+COLORS = {"run_M16_raw": "#BC6C25", "run_M16_fplus": "#355FA3", "run_M24_raw": "#111111"}
+
+
+def nodal_profile(record: dict, key: str, scale: float) -> np.ndarray:
+    """Return array with shape (3 GLL nodes, number of elements)."""
+    return np.asarray([[record["points"][u][e][key]
+                        for e in range(len(record["points"][0]))]
+                       for u in range(len(record["points"]))], dtype=float) * scale
+
+
+def plot_element_segments(ax, xnodes, values, *, color, label, marker=None,
+                          ms=0.0, lw=1.6, zorder=2, markerfacecolor=None):
+    """Plot within-element traces only; never bridge a DG interface."""
+    for e in range(xnodes.shape[1]):
+        ax.plot(xnodes[:, e], values[:, e], color=color, lw=lw,
+                marker=marker, ms=ms, markeredgewidth=1.25,
+                markerfacecolor=markerfacecolor, zorder=zorder,
+                label=label if e == 0 else None)
+
+
+def style_axes(axes, edges):
+    for ax in axes.flat:
+        for xb in edges[1:-1]:
+            ax.axvline(xb, color="#E5E5E5", lw=0.55, zorder=0)
+        ax.grid(True, axis="y", color="#D8D8D8", lw=0.65, alpha=0.8)
+        ax.spines[["top", "right"]].set_visible(False)
+        ax.set_xlim(edges[0] - 0.5, edges[-1] + 0.5)
 
 
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--comparison", type=Path, default=Path("p3c_comparison.json"))
-    ap.add_argument("--png", type=Path, default=Path("p3c_physical_profiles.png"))
-    ap.add_argument("--pdf", type=Path, default=Path("p3c_physical_profiles.pdf"))
-    ap.add_argument("--csv", type=Path, default=Path("p3c_physical_profiles.csv"))
+    ap.add_argument("--profiles-png", type=Path, default=Path("p3c_physical_profiles_24points.png"))
+    ap.add_argument("--profiles-pdf", type=Path, default=Path("p3c_physical_profiles_24points.pdf"))
+    ap.add_argument("--differences-png", type=Path, default=Path("p3c_physical_differences.png"))
+    ap.add_argument("--differences-pdf", type=Path, default=Path("p3c_physical_differences.pdf"))
+    ap.add_argument("--csv", type=Path, default=Path("p3c_physical_profiles_24points.csv"))
     args = ap.parse_args()
 
     report = json.loads(args.comparison.read_text())
@@ -44,13 +71,7 @@ def main() -> None:
 
     nd = report["nondim"]
     rho0, u0, T0 = float(nd["rho0"]), float(nd["u0"]), float(nd["T0"])
-    p0 = rho0 * u0**2
-    q0 = rho0 * u0**3
-    records = {"reference": report["reference"], **{name: runs[name] for name in RUN_ORDER}}
-    ne = len(report["reference"]["cell_averages"]["rho"])
-    edges = np.linspace(-15.0, 15.0, ne + 1)
-    x = 0.5 * (edges[:-1] + edges[1:])
-
+    p0, q0 = rho0 * u0**2, rho0 * u0**3
     panels = (
         ("rho", rho0, r"Density, $\rho$ [kg m$^{-3}$]"),
         ("ux", u0, r"Streamwise velocity, $u_x$ [m s$^{-1}$]"),
@@ -60,54 +81,87 @@ def main() -> None:
         ("uz", u0, r"Transverse velocity, $u_z$ [m s$^{-1}$]"),
     )
 
+    ne = len(runs[RUN_ORDER[0]]["points"][0])
+    edges = np.linspace(-15.0, 15.0, ne + 1)
+    xnodes = np.vstack((edges[:-1], 0.5 * (edges[:-1] + edges[1:]), edges[1:]))
+    values = {name: {key: nodal_profile(runs[name], key, scale)
+                     for key, scale, _ in panels} for name in RUN_ORDER}
+
     with args.csv.open("w", newline="") as stream:
-        fields = ["case", "x_mm", "rho_kg_m3", "ux_m_s", "T_K",
-                  "qx_W_m2", "Pxx_minus_p_Pa", "uz_m_s"]
+        fields = ["case", "Mach", "angular_Momega", "element", "gll_node", "x_mm",
+                  "rho_kg_m3", "ux_m_s", "T_K", "qx_W_m2", "Pxx_minus_p_Pa", "uz_m_s"]
         writer = csv.DictWriter(stream, fieldnames=fields)
         writer.writeheader()
-        for name, record in records.items():
-            vals = {key: np.asarray(record["cell_averages"][key], dtype=float) * scale
-                    for key, scale, _ in panels}
-            for i, xi in enumerate(x):
-                writer.writerow({
-                    "case": name, "x_mm": xi,
-                    "rho_kg_m3": vals["rho"][i], "ux_m_s": vals["ux"][i],
-                    "T_K": vals["T"][i], "qx_W_m2": vals["qx"][i],
-                    "Pxx_minus_p_Pa": vals["Pxx_minus_p"][i],
-                    "uz_m_s": vals["uz"][i],
-                })
+        for name in RUN_ORDER:
+            for e in range(ne):
+                for u in range(3):
+                    writer.writerow({
+                        "case": name, "Mach": 1.59, "angular_Momega": runs[name]["M"],
+                        "element": e, "gll_node": u, "x_mm": xnodes[u, e],
+                        "rho_kg_m3": values[name]["rho"][u, e],
+                        "ux_m_s": values[name]["ux"][u, e], "T_K": values[name]["T"][u, e],
+                        "qx_W_m2": values[name]["qx"][u, e],
+                        "Pxx_minus_p_Pa": values[name]["Pxx_minus_p"][u, e],
+                        "uz_m_s": values[name]["uz"][u, e],
+                    })
 
-    plt.rcParams.update({
-        "font.size": 10.5, "axes.labelsize": 11.5, "xtick.labelsize": 9.5,
-        "ytick.labelsize": 9.5, "legend.fontsize": 10, "lines.linewidth": 1.8,
-    })
-    fig, axes = plt.subplots(2, 3, figsize=(13.2, 7.2), sharex=True,
-                             constrained_layout=True)
-    for letter, ax, (key, scale, ylabel) in zip("abcdef", axes.flat, panels):
-        for name, record in records.items():
-            y = np.asarray(record["cell_averages"][key], dtype=float) * scale
-            ax.plot(x, y, ms=4.2, label=LABELS[name], **STYLES[name])
+    plt.rcParams.update({"font.size": 10.5, "axes.labelsize": 11.5,
+                         "xtick.labelsize": 9.5, "ytick.labelsize": 9.5,
+                         "legend.fontsize": 10, "lines.linewidth": 1.7})
+
+    fig, axes = plt.subplots(2, 3, figsize=(13.2, 7.35), sharex=True, constrained_layout=True)
+    for letter, ax, (key, _, ylabel) in zip("abcdef", axes.flat, panels):
+        plot_element_segments(ax, xnodes, values["run_M24_raw"][key],
+                              color=COLORS["run_M24_raw"], label=LABELS["run_M24_raw"],
+                              lw=2.0, zorder=2)
+        plot_element_segments(ax, xnodes, values["run_M16_raw"][key],
+                              color=COLORS["run_M16_raw"], label=LABELS["run_M16_raw"],
+                              marker="^", ms=6.0, lw=0.8, zorder=3, markerfacecolor="none")
+        plot_element_segments(ax, xnodes, values["run_M16_fplus"][key],
+                              color=COLORS["run_M16_fplus"], label=LABELS["run_M16_fplus"],
+                              marker="o", ms=3.8, lw=0.8, zorder=4, markerfacecolor="white")
         ax.set_ylabel(ylabel)
         ax.set_title(f"({letter})", loc="left", fontweight="bold")
-        ax.grid(True, color="#D8D8D8", lw=0.65, alpha=0.8)
-        ax.spines[["top", "right"]].set_visible(False)
-        ax.set_xlim(-15.5, 15.5)
         if key == "uz":
             ax.axhline(0.0, color="#777777", lw=0.8)
+    style_axes(axes, edges)
     for ax in axes[1, :]:
         ax.set_xlabel(r"$x$ [mm]")
     handles, labels = axes[0, 0].get_legend_handles_labels()
-    fig.legend(handles, labels, ncol=4, loc="outside upper center", frameon=False)
-    fig.savefig(args.png, dpi=300, bbox_inches="tight")
-    fig.savefig(args.pdf, bbox_inches="tight")
-    print(f"RHO_SCALE={rho0:.16e} kg/m^3")
-    print(f"VELOCITY_SCALE={u0:.16e} m/s")
-    print(f"TEMPERATURE_SCALE={T0:.16e} K")
-    print(f"STRESS_SCALE={p0:.16e} Pa")
-    print(f"HEAT_FLUX_SCALE={q0:.16e} W/m^2")
-    print(f"WROTE_PNG={args.png}")
-    print(f"WROTE_PDF={args.pdf}")
-    print(f"WROTE_CSV={args.csv}")
+    order = [1, 2, 0]
+    fig.legend([handles[i] for i in order], [labels[i] for i in order], ncol=3,
+               loc="outside upper center", frameon=False,
+               title=r"Normal shock: $Ma=1.59$; final state $t=31$; 8 elements $\times$ 3 GLL nodes")
+    fig.savefig(args.profiles_png, dpi=300, bbox_inches="tight")
+    fig.savefig(args.profiles_pdf, bbox_inches="tight")
+
+    fig2, axes2 = plt.subplots(2, 3, figsize=(13.2, 7.35), sharex=True, constrained_layout=True)
+    benchmark = values["run_M24_raw"]
+    for letter, ax, (key, _, ylabel) in zip("abcdef", axes2.flat, panels):
+        for name, marker, ms in (("run_M16_raw", "^", 5.5), ("run_M16_fplus", "o", 4.0)):
+            diff = values[name][key] - benchmark[key]
+            plot_element_segments(ax, xnodes, diff, color=COLORS[name],
+                                  label=LABELS[name] + r" minus $M_\Omega=24$",
+                                  marker=marker, ms=ms, lw=1.3, zorder=3,
+                                  markerfacecolor="white")
+        ax.axhline(0.0, color="#777777", lw=0.8)
+        ax.set_ylabel(r"Difference in " + ylabel[0].lower() + ylabel[1:])
+        ax.set_title(f"({letter})", loc="left", fontweight="bold")
+    style_axes(axes2, edges)
+    for ax in axes2[1, :]:
+        ax.set_xlabel(r"$x$ [mm]")
+    handles, labels = axes2[0, 0].get_legend_handles_labels()
+    fig2.legend(handles, labels, ncol=2, loc="outside upper center", frameon=False,
+                title=r"Pointwise angular-rule difference; normal shock $Ma=1.59$; 24 DG values")
+    fig2.savefig(args.differences_png, dpi=300, bbox_inches="tight")
+    fig2.savefig(args.differences_pdf, bbox_inches="tight")
+
+    print("CASE_MACH=1.59")
+    print("ANGULAR_RULES=Momega16,Momega24")
+    print(f"DG_VALUES_PER_PROFILE={ne * 3}")
+    for path in (args.profiles_png, args.profiles_pdf, args.differences_png,
+                 args.differences_pdf, args.csv):
+        print(f"WROTE={path}")
 
 
 if __name__ == "__main__":
