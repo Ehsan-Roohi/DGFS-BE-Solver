@@ -8,14 +8,14 @@
 #SBATCH --gpus=1
 #SBATCH --constraint=vram16
 #SBATCH --mem=24G
-#SBATCH --time=03:00:00
+#SBATCH --time=04:00:00
 set -Eeuo pipefail
 trap 'rc=$?; rm -f P4A_SUCCESS; echo "P4A_FAILED rc=$rc line=$LINENO"; exit "$rc"' ERR
 DGFS_ROOT=${DGFS_ROOT:-/project/pi_roohie_umass_edu/DGFS_BE}
 DGFS_ENV=${DGFS_ENV:-$DGFS_ROOT/dgfs_py310}
 RUN_DIR=$(pwd)
 SOLVER_SRC=${DGFS_SOLVER_SRC:-$RUN_DIR/src}
-RUNS=M6_raw:32:6:none,M16_fplus:16:16:fplus,M24_raw:16:24:none
+RUNS=M16_raw:16:16:none,M16_fplus:16:16:fplus,M24_raw:16:24:none
 source /etc/profile.d/modules.sh 2>/dev/null || true
 module purge
 module load cuda/12.6
@@ -26,8 +26,9 @@ conda activate "$DGFS_ENV"
 export PYTHONNOUSERSITE=1 PYTHONUNBUFFERED=1 HDF5_USE_FILE_LOCKING=FALSE
 export OMP_NUM_THREADS=${SLURM_CPUS_PER_TASK:-4}
 export CUDA_CACHE_PATH="$RUN_DIR/.cuda-cache"
+export MPLCONFIGDIR="$RUN_DIR/.matplotlib"
 export PYTHONPATH="$SOLVER_SRC:$RUN_DIR/p3${PYTHONPATH:+:$PYTHONPATH}"
-mkdir -p "$CUDA_CACHE_PATH"
+mkdir -p "$CUDA_CACHE_PATH" "$MPLCONFIGDIR"
 test -s dgfs_fig14b.ini
 test -s mesh.frfsm
 test -s dist_dgfs_fig14b-0.0.frfss
@@ -54,12 +55,18 @@ PY
   echo "P4A_RUN_DONE name=$name $(cat "$d/WALLTIME.txt")"
 done
 python p3/compare_restarts.py --config dgfs_fig14b.ini --mesh mesh.frfsm \
-  --reference dist_dgfs_fig14b-0.0.frfss --runs run_M6_raw run_M16_fplus run_M24_raw \
+  --reference dist_dgfs_fig14b-0.0.frfss --runs run_M16_raw run_M16_fplus run_M24_raw \
   --tstart 0 --tend 1 --output-json p4a_comparison.json --output-csv p4a_comparison.csv \
-  --output-md p4a_comparison.md --output-figure p4a_profiles.png \
+  --output-md p4a_comparison.md --output-figure p4a_profiles_raw_dg.png \
   --output-cell-figure p4a_cell_averages.png 2>&1 | tee p4a_compare.log
 python p3/p4a_assess.py --comparison p4a_comparison.json 2>&1 | tee p4a_assess.log
 grep -q P4A_ASSESSMENT_PASS p4a_assess.log
+python p3/p3c_physical_profiles.py --comparison p4a_comparison.json --mach 1.59 \
+  --profiles-png p4a_physical_profiles_24points.png \
+  --profiles-pdf p4a_physical_profiles_24points.pdf \
+  --differences-png p4a_physical_differences.png \
+  --differences-pdf p4a_physical_differences.pdf \
+  --csv p4a_physical_profiles_24points.csv
 touch P4A_SUCCESS
 ZIP="$DGFS_ROOT/p4a_${SLURM_JOB_ID:-manual}.zip"
 zip -q -9 -r "$ZIP" p4a_* gpu_layout_preflight.log configs run_* p3 solver_hook INPUT.txt \
