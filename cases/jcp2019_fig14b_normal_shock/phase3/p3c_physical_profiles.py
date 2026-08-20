@@ -56,6 +56,7 @@ def style_axes(axes, edges):
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--comparison", type=Path, default=Path("p3c_comparison.json"))
+    ap.add_argument("--mach", type=float, default=1.59)
     ap.add_argument("--profiles-png", type=Path, default=Path("p3c_physical_profiles_24points.png"))
     ap.add_argument("--profiles-pdf", type=Path, default=Path("p3c_physical_profiles_24points.pdf"))
     ap.add_argument("--differences-png", type=Path, default=Path("p3c_physical_differences.png"))
@@ -64,6 +65,7 @@ def main() -> None:
     args = ap.parse_args()
 
     report = json.loads(args.comparison.read_text())
+    tend = float(report.get("tend", float("nan")))
     runs = {r["run"]: r for r in report["runs"]}
     missing = set(RUN_ORDER) - set(runs)
     if missing:
@@ -96,7 +98,7 @@ def main() -> None:
             for e in range(ne):
                 for u in range(3):
                     writer.writerow({
-                        "case": name, "Mach": 1.59, "angular_Momega": runs[name]["M"],
+                        "case": name, "Mach": args.mach, "angular_Momega": runs[name]["M"],
                         "element": e, "gll_node": u, "x_mm": xnodes[u, e],
                         "rho_kg_m3": values[name]["rho"][u, e],
                         "ux_m_s": values[name]["ux"][u, e], "T_K": values[name]["T"][u, e],
@@ -131,7 +133,8 @@ def main() -> None:
     order = [1, 2, 0]
     fig.legend([handles[i] for i in order], [labels[i] for i in order], ncol=3,
                loc="outside upper center", frameon=False,
-               title=r"Normal shock: $Ma=1.59$; final state $t=31$; 8 elements $\times$ 3 GLL nodes")
+               title=rf"Normal shock: $Ma={args.mach:g}$; final state $t={tend:g}$; "
+                     rf"8 elements $\times$ 3 GLL nodes")
     fig.savefig(args.profiles_png, dpi=300, bbox_inches="tight")
     fig.savefig(args.profiles_pdf, bbox_inches="tight")
 
@@ -152,11 +155,12 @@ def main() -> None:
         ax.set_xlabel(r"$x$ [mm]")
     handles, labels = axes2[0, 0].get_legend_handles_labels()
     fig2.legend(handles, labels, ncol=2, loc="outside upper center", frameon=False,
-                title=r"Pointwise angular-rule difference; normal shock $Ma=1.59$; 24 DG values")
+                title=rf"Pointwise angular-rule difference; normal shock $Ma={args.mach:g}$; "
+                      rf"{ne * 3} DG values")
     fig2.savefig(args.differences_png, dpi=300, bbox_inches="tight")
     fig2.savefig(args.differences_pdf, bbox_inches="tight")
 
-    print("CASE_MACH=1.59")
+    print(f"CASE_MACH={args.mach:g}")
     print("ANGULAR_RULES=Momega16,Momega24")
     print(f"DG_VALUES_PER_PROFILE={ne * 3}")
     for path in (args.profiles_png, args.profiles_pdf, args.differences_png,
