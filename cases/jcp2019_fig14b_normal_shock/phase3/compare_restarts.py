@@ -1,4 +1,9 @@
-#!/usr/bin/env python3
+"""Compare DGFS restart snapshots against a supplied reference distribution.
+
+The script computes per-point physical moments from the full distributions,
+domain inventories, overshoot and negativity diagnostics, final residuals, and
+wall times.  Reference and restart times are read from file metadata; no
+specific start time is assumed.
 """Compare the phase-3b short restarts (t = 30 -> 30.1): per-point moments computed
 directly from the full distributions (rho, u_x, u_z, T, viscous normal stress
 P_xx - p, heat flux q_x, negativity), domain inventories (mass, momentum, energy,
