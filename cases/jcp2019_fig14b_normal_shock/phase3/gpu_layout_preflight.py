@@ -13,6 +13,7 @@ from conservative_projection import ConservativeProjector, GPUConservativeProjec
 def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--config", type=Path, required=True)
+    ap.add_argument("--mode", choices=("fplus", "fplus-transverse"), default="fplus")
     args = ap.parse_args()
 
     import mpi4py.rc
@@ -43,9 +44,18 @@ def main() -> None:
     d_f = backend.matrix(shape, f, tags={"align"})
     d_q = backend.matrix(shape, q, tags={"align"})
     elem, upt = 5, 1
-    ref = ConservativeProjector(cv, float(vm.cw())).project(
-        q[upt, :, elem], f[upt, :, elem], "fplus").Qc
-    projector = GPUConservativeProjector(backend, vm, "fplus", "device")
+    cpu = ConservativeProjector(cv, float(vm.cw()))
+    if args.mode == "fplus":
+        ref = cpu.project(q[upt, :, elem], f[upt, :, elem], "fplus").Qc
+    else:
+        q0, f0 = q[upt, :, elem], f[upt, :, elem]
+        moments = cpu.moments(q0)
+        weight = np.maximum(f0, 0.0)
+        gram = float(vm.cw()) * ((cpu.B * weight[None, :]) @ cpu.B.T)
+        target = moments * np.array([0.0, 0.0, 1.0, 1.0, 0.0])
+        lam = np.linalg.solve(gram, target)
+        ref = q0 - weight * (cpu.B.T @ lam)
+    projector = GPUConservativeProjector(backend, vm, args.mode, "device")
     projector.apply(d_f, d_q, elem, upt)
     cuda.Context.synchronize()
     got = d_q.get()
@@ -55,6 +65,7 @@ def main() -> None:
     untouched = q.copy()
     untouched[upt, :, elem] = got[upt, :, elem]
     collateral = float(np.max(np.abs(got - untouched)))
+    print(f"P3B_LAYOUT_MODE={args.mode}")
     print(f"P3B_LAYOUT_REL_LINF={rel:.16e}")
     print(f"P3B_LAYOUT_COLLATERAL_LINF={collateral:.16e}")
     if rel >= 1.0e-10 or collateral != 0.0:
