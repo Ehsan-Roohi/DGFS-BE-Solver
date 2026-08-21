@@ -35,6 +35,7 @@ import numpy as np
 INVARIANT_NAMES = ("mass", "momentum_x", "momentum_y", "momentum_z", "energy")
 WEIGHTINGS = ("euclidean", "f", "fplus", "maxwellian")
 GPU_WEIGHTINGS = ("euclidean", "f", "fplus")
+GPU_MODES = GPU_WEIGHTINGS + ("fplus-transverse",)
 
 
 # --------------------------------------------------------------------------- #
@@ -319,11 +320,12 @@ __global__ void proj_solve
         for (int k = 0; k < NQ; ++k) { S[k] = cw*sh[k*NTHREADS]; sums[k] = S[k]; }
         const int ut[5][5] = { {5,6,7,8,9}, {6,10,11,12,13}, {7,11,14,15,16},
                                {8,12,15,17,18}, {9,13,16,18,19} };
+        const int active[5] = {@ACTIVE@};
         double A[5][6], D[5], y[5];
         for (int i = 0; i < 5; ++i) D[i] = rsqrt(S[ut[i][i]]);
         for (int i = 0; i < 5; ++i) {
             for (int j = 0; j < 5; ++j) A[i][j] = D[i]*S[ut[i][j]]*D[j];
-            A[i][5] = D[i]*S[i];
+            A[i][5] = D[i]*(active[i] ? S[i] : 0.0);
         }
         for (int c = 0; c < 5; ++c) {
             int piv = c; double best = fabs(A[c][c]);
@@ -381,14 +383,20 @@ class GPUConservativeProjector:
 
     def __init__(self, backend, vm, weighting: str = "euclidean", solve: str = "device",
                  nblocks: int = 128, nthreads: int = 256):
+        requested_mode = weighting
+        if requested_mode == "fplus-transverse":
+            weighting, active = "fplus", (0, 0, 1, 1, 0)
+        else:
+            active = (1, 1, 1, 1, 1)
         if weighting not in GPU_WEIGHTINGS:
-            raise ValueError(f"GPU weighting must be one of {GPU_WEIGHTINGS}")
+            raise ValueError(f"GPU mode must be one of {GPU_MODES}")
         if solve not in ("device", "host"):
             raise ValueError("solve must be 'device' or 'host'")
         from pycuda import compiler, gpuarray
 
         self.gpuarray = gpuarray
         self.backend, self.vm = backend, vm
+        self.mode, self.active = requested_mode, active
         self.weighting, self.solve = weighting, solve
         self.nblocks, self.nthreads = int(nblocks), int(nthreads)
         self.vsize = int(vm.vsize())
@@ -405,7 +413,8 @@ class GPUConservativeProjector:
         src = (_GPU_SRC.replace("@SOASZ@", str(backend.soasz))
                .replace("@VSIZE@", str(self.vsize))
                .replace("@NTHREADS@", str(self.nthreads))
-               .replace("@WMODE@", str(wmode)))
+               .replace("@WMODE@", str(wmode))
+               .replace("@ACTIVE@", ",".join(map(str, active))))
         module = compiler.SourceModule(src)
         self.k_partial = module.get_function("proj_partial")
         self.k_partial.prepare("iiiiiiPPPPPP")
