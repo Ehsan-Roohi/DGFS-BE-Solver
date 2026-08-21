@@ -1,0 +1,7 @@
+{
+  "method": "DSMC",
+  "source": "DOI, repository commit, or complete run identifier",
+  "independent_of_dgfs": true,
+  "same_physical_case": true,
+  "sha256": "replace_with_sha256_of_reference_csv"
+}
