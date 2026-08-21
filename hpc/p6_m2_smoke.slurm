@@ -22,14 +22,34 @@ export PYTHONPATH="$DGFS_SOLVER_SRC${PYTHONPATH:+:$PYTHONPATH}"
 nvidia-smi
 python -m frfs import mesh_M2_32elem.msh mesh_M2.frfsm
 python -m frfs run mesh_M2.frfsm dgfs_M2.ini -b cuda 2>&1 | tee solver_M2.log
-test -s dist_dgfs_M2-0.25.frfss
-test -s bulksol_dgfs_M2-0.25.frfss
+test -s dist_dgfs_M2-0.01.frfss
+test -s bulksol_dgfs_M2-0.01.frfss
 test -s kinetic_residual_m2.csv
-python -m frfs export mesh_M2.frfsm bulksol_dgfs_M2-0.25.frfss dgfs_M2_t0p25.vtu -d 48
+python - <<'PY'
+import math
+import re
+
+text = open('solver_M2.log', encoding='utf-8', errors='replace').read()
+rows = re.findall(
+    r'dgfsresidualstd\s*:\s*([0-9.eE+-]+),\s*([0-9.eE+-]+),\s*([0-9.eE+-]+)',
+    text,
+)
+if not rows:
+    raise SystemExit('P6_RESIDUAL_ROWS_MISSING')
+t, raw, norm = map(float, rows[-1])
+if not all(map(math.isfinite, (t, raw, norm))):
+    raise SystemExit('P6_FINAL_RESIDUAL_NONFINITE')
+if abs(t - 0.01) > 5.0e-7:
+    raise SystemExit(f'P6_FINAL_TIME_MISMATCH={t:.17g}')
+if raw >= 5.0e-2 or norm >= 1.0e2:
+    raise SystemExit(f'P6_RESIDUAL_GROWTH_GATE_FAILED raw={raw:.17g} norm={norm:.17g}')
+print(f'P6_STABILITY_GATE_PASS time={t:.17g} raw={raw:.17g} norm={norm:.17g}')
+PY
+python -m frfs export mesh_M2.frfsm bulksol_dgfs_M2-0.01.frfss dgfs_M2_t0p01.vtu -d 48
 touch P6_SUCCESS
 ZIP="p6_m2_${SLURM_JOB_ID}.zip"
-zip -q -9 "$ZIP" dgfs_M2.ini mesh_M2_32elem.msh mesh_M2.frfsm dist_dgfs_M2-0.25.frfss \
-  bulksol_dgfs_M2-0.25.frfss kinetic_residual_m2.csv dgfs_M2_t0p25.vtu solver_M2.log \
+zip -q -9 "$ZIP" dgfs_M2.ini mesh_M2_32elem.msh mesh_M2.frfsm dist_dgfs_M2-0.01.frfss \
+  bulksol_dgfs_M2-0.01.frfss kinetic_residual_m2.csv dgfs_M2_t0p01.vtu solver_M2.log \
   dvm_M2_reference.csv P6_CASE_CONTRACT.json P6_CASE_VERIFIED P6_SUCCESS "slurm-${SLURM_JOB_ID}.out"
 zip -T "$ZIP"
 sha256sum "$ZIP" > "$ZIP.sha256.txt"
