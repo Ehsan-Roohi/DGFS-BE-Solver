@@ -75,8 +75,8 @@ order = 2
 scheme = dgfs-tvd-rk2
 controller = none
 tstart = 0
-tend = 0.25
-dt = 0.001
+tend = 0.01
+dt = 0.0001
 dt-min = 1e-15
 
 [solver-interfaces]
@@ -94,7 +94,7 @@ flux-pts = gauss-legendre
 soln-pts = gauss-legendre-lobatto
 
 [soln-plugin-nancheck]
-nsteps = 25
+nsteps = 10
 
 [soln-plugin-dgfsresidualstd]
 nsteps = 1
@@ -103,12 +103,12 @@ file = kinetic_residual_m2.csv
 normalise = true
 
 [soln-plugin-dgfsdistwriterstd]
-dt-out = 0.25
+dt-out = 0.01
 basedir = .
 basename = dist_dgfs_M2-{{t:.2f}}
 
 [soln-plugin-dgfsmomwriterstd]
-dt-out = 0.25
+dt-out = 0.01
 basedir = .
 basename = bulksol_dgfs_M2-{{t:.2f}}
 
@@ -180,7 +180,8 @@ def main():
                 "comparison_class":"cross-model, not same-operator validation",
                 "dvm_path":str(Path(args.dvm).resolve()), "dvm_sha256":digest,
                 "dvm_grid":{"nx":len(z["x"]),"nv":len(z["v"]),"x_mfp":[float(x) for x in (np.min(z["x_mfp"]),np.max(z["x_mfp"]))]},
-                "dgfs_grid":{"elements":args.elements,"order":2,"Nrho":24,"Momega":24,"dev":12},
+                "dgfs_grid":{"elements":args.elements,"order":2,"Nrho":24,"Momega":24,"dev":12,
+                             "dt":1.0e-4,"smoke_tend":1.0e-2},
                 "physical":{"rho1":rho1,"T1":t1,"u1":u1,"rho2":rho2,"T2":t2,"u2":u2,"lambda1_m":lambda1,"H0_m":h0}}
     (out/"P6_CASE_CONTRACT.json").write_text(json.dumps(contract, indent=2)+"\n")
     (out/"P6_CASE_VERIFIED").touch()
