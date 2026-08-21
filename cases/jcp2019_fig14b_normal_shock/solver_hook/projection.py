@@ -433,7 +433,7 @@ class GPUConservativeProjector:
         partial = self.d_partial.get().reshape(self.nblocks, 20)
         S = self.cw * partial.sum(axis=0)
         G = np.array([[S[_UT[i][j]] for j in range(5)] for i in range(5)])
-        m = S[:5]
+        m = S[:5] * np.asarray(self.active, dtype=np.float64)
         D = 1.0 / np.sqrt(np.diag(G))
         lam = D * np.linalg.solve(D[:, None] * G * D[None, :], D * m)
         self.d_lam.set(np.ascontiguousarray(lam, dtype=np.float64))
