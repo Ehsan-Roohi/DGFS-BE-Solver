@@ -6,7 +6,7 @@
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
 #SBATCH --gpus=1
-#SBATCH --constraint=vram24
+#SBATCH --constraint=fp64&vram32
 #SBATCH --mem=32G
 #SBATCH --time=03:50:00
 set -Eeuo pipefail
