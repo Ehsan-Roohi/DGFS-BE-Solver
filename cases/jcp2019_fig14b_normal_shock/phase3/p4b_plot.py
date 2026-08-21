@@ -61,24 +61,34 @@ def main() -> None:
     fig.savefig(args.out_dir / "p4b_rms_time_history.pdf", bbox_inches="tight")
 
     quality = (
-        ("max_abs_uz_m_s", r"max $|u_z|$ [m s$^{-1}$]"),
-        ("max_rho_ux_T_overshoot_fraction", r"max overshoot fraction"),
-        ("max_negative_mass_fraction", r"negative-mass fraction"),
-        ("shock_position_mm", r"shock location [mm]"),
-        ("qx_min_W_m2", r"minimum $q_x$ [W m$^{-2}$]"),
-        ("stress_max_Pa", r"maximum $P_{xx}-p$ [Pa]"),
+        ("max_abs_uz_m_s", r"max $|u_z|$ [m s$^{-1}$]", "absolute"),
+        ("min_f", r"minimum distribution value", "absolute"),
+        ("max_negative_mass_fraction", r"negative-mass fraction", "absolute"),
+        ("shock_position_mm", r"$x_s-x_{s,24}$ [$\\mu$m]", "delta_um"),
+        ("qx_min_W_m2", r"$q_{x,\\min}-q_{x,\\min,24}$ [W m$^{-2}$]", "delta"),
+        ("stress_max_Pa", r"$(P_{xx}-p)_{\\max}-(P_{xx}-p)_{\\max,24}$ [Pa]", "delta"),
     )
     fig2, axes2 = plt.subplots(2, 3, figsize=(13.2, 7.4), sharex=True, constrained_layout=True)
-    for letter, ax, (field, ylabel) in zip("abcdef", axes2.flat, quality):
-        for name in RUNS:
+    reference = {r["time"]: r for r in by["run_M24_raw"]}
+    for letter, ax, (field, ylabel, mode) in zip("abcdef", axes2.flat, quality):
+        names = RUNS if mode == "absolute" else RUNS[:2]
+        for name in names:
             rr = by[name]
-            ax.plot([float(r["time"]) for r in rr], [float(r[field]) for r in rr],
+            values = [float(r[field]) for r in rr]
+            if mode.startswith("delta"):
+                values = [value - float(reference[r["time"]][field])
+                          for r, value in zip(rr, values)]
+                if mode == "delta_um":
+                    values = [1000.0*value for value in values]
+            ax.plot([float(r["time"]) for r in rr], values,
                     color=COLORS[name], marker=MARKERS[name], ms=5.5, lw=1.7,
                     markerfacecolor="white", label=LABELS[name])
+        if mode.startswith("delta"):
+            ax.axhline(0.0, color="#555555", lw=0.9, ls=":", zorder=0)
         ax.set_ylabel(ylabel)
         ax.set_title(f"({letter})", loc="left", fontweight="bold")
         ax.grid(True, color="#DDDDDD", lw=0.7)
-        if field in ("max_abs_uz_m_s", "max_rho_ux_T_overshoot_fraction", "max_negative_mass_fraction"):
+        if field in ("max_abs_uz_m_s", "min_f", "max_negative_mass_fraction"):
             ax.ticklabel_format(axis="y", style="sci", scilimits=(-2, 2))
     for ax in axes2[1, :]:
         ax.set_xlabel(r"time, $t$")
