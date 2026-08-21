@@ -29,7 +29,7 @@ export CUDA_CACHE_PATH="$RUN_DIR/.cuda-cache" MPLCONFIGDIR="$RUN_DIR/.matplotlib
 export PYTHONPATH="$SOLVER_SRC:$RUN_DIR/p3${PYTHONPATH:+:$PYTHONPATH}"
 mkdir -p "$CUDA_CACHE_PATH" "$MPLCONFIGDIR"
 python solver_hook/apply_hook.py "$SOLVER_SRC"
-python p3/gpu_layout_preflight.py --config dgfs_fig14b.ini 2>&1 | tee gpu_layout_preflight.log
+python p3/gpu_layout_preflight.py --config dgfs_fig14b.ini --mode fplus-transverse 2>&1 | tee gpu_layout_preflight.log
 grep -q P3B_GPU_LAYOUT_PREFLIGHT_PASS gpu_layout_preflight.log
 python p3/make_restart_configs.py --base dgfs_fig14b.ini --residual-csv kinetic_residual.csv \
   --tstart 0 --tend 0.25 --dt-out 0.05 --runs "$RUNS" --out-dir configs
