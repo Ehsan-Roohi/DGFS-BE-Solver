@@ -7,11 +7,13 @@ It (1) copies ``projection.py`` to ``frfs/solvers/dgfs/projection.py`` and
 (2) patches ``frfs/solvers/dgfs/system.py`` so that
 
     [scattering-model]
-    projection = none | euclidean | f | fplus      (default none)
+    projection = none | euclidean | f | fplus | fplus-transverse  (default none)
     projection-solve = device | host               (default device)
 
-controls an in-place five-moment conservative projection of Q(f,f) applied right
-after every ``self.sm.fs(...)`` call inside ``DGFSSystem.collide``.  The patch is
+controls an in-place projection of Q(f,f) applied right
+after every ``self.sm.fs(...)`` call inside ``DGFSSystem.collide``. The
+``fplus-transverse`` diagnostic removes only the symmetry-forbidden y/z collision
+moments and leaves the raw mass, x-momentum, and energy defects unchanged. The patch is
 idempotent and only touches two anchors; with ``projection = none`` the solver
 is bit-identical to the unpatched code path.
 """
