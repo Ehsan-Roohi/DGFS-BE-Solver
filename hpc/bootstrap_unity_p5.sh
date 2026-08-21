@@ -8,13 +8,22 @@ REF=${DGFS_GIT_REF:-agent/phase5-independent-validation}
 STAMP=$(date +%Y%m%d_%H%M%S)
 RUN_DIR="$ROOT/p5_$STAMP"
 
-P4E=${DGFS_P5_P4E_DIR:-}
-if [[ -z "$P4E" ]]; then
-    P4E=$(find "$ROOT" -maxdepth 1 -type d -name 'p4e_*' -exec test -s '{}/P4E_SUCCESS' ';' \
+PROFILES=${DGFS_P5_PROFILES:-}
+if [[ -z "$PROFILES" && -n "${DGFS_P5_P4E_DIR:-}" ]]; then
+    PROFILES="$DGFS_P5_P4E_DIR/p4e_results/p4e_physical_profiles.csv"
+fi
+if [[ -z "$PROFILES" ]]; then
+    PROFILES=$(find "$ROOT" -maxdepth 6 -type f -name 'p4e_physical_profiles.csv' \
         -printf '%T@ %p\n' | sort -nr | head -1 | cut -d' ' -f2-)
 fi
-PROFILES="$P4E/p4e_results/p4e_physical_profiles.csv"
-[[ -s "$PROFILES" ]] || { echo "P5_PHYSICAL_PROFILES_NOT_FOUND"; exit 2; }
+if [[ ! -s "$PROFILES" ]]; then
+    echo "P5_PHYSICAL_PROFILES_NOT_FOUND_UNDER=$ROOT"
+    echo "Set DGFS_P5_PROFILES=/absolute/path/p4e_physical_profiles.csv"
+    find "$ROOT" -maxdepth 4 -type f \( -name 'p4e_*.zip' -o -name '*physical_profiles*.csv' \) \
+        -printf '%TY-%Tm-%Td %TH:%TM %p\n' | sort | tail -20 || true
+    exit 2
+fi
+echo "P5_DISCOVERED_PROFILES=$PROFILES"
 
 EXTERNAL=${DGFS_P5_REFERENCE_CSV:-}
 PROVENANCE=${DGFS_P5_REFERENCE_PROVENANCE:-}
