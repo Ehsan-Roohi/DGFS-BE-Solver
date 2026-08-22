@@ -1,0 +1,37 @@
+{
+  "paper": "Jaiswal, Alexeenko & Hu, JCP 378 (2019) 178-208",
+  "doi": "10.1016/j.jcp.2018.11.001",
+  "arxiv": "1809.10186v2",
+  "source_url": "https://arxiv.org/pdf/1809.10186",
+  "pdf_sha256": "83c5a14b3c8a2bdad8903964ffd76c61e94bd9796958a9b7135f33773f1a157d",
+  "pdf_page_1_based": 14,
+  "figure": "14(a,b)",
+  "method": "native SVG path extraction; no raster tracing",
+  "meaning": {
+    "symbols": "Ohwada (1993) [59]",
+    "lines": "paper DGFS"
+  },
+  "axis": {
+    "x": "x/lambda, [-8,6]",
+    "y": "normalized property, [0,1]"
+  },
+  "estimated_reading_uncertainty": {
+    "x_over_lambda": 0.01,
+    "normalized_value": 0.002
+  },
+  "calibration": {
+    "panel_4e": {
+      "raw_x_left": 1562.462534,
+      "raw_x_right": 6422.514597,
+      "raw_y_top": 871.278801,
+      "raw_y_bottom": 5306.53374
+    },
+    "panel_8e": {
+      "raw_x_left": 1562.506971,
+      "raw_x_right": 6422.458775,
+      "raw_y_top": 871.278801,
+      "raw_y_bottom": 5306.53374
+    }
+  },
+  "rows": 402
+}
