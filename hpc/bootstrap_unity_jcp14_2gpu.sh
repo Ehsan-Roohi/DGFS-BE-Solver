@@ -8,6 +8,7 @@ REPO=${DGFS_REPO:-https://github.com/Ehsan-Roohi/DGFS-BE-Solver.git}
 REF=${DGFS_REF:-agent/jcp14-2gpu-checkpoint-continuation}
 SOURCE_CAMPAIGN=${DGFS_JCP14_SOURCE:-$ROOT/jcp14_20260822_164418}
 MAX_SEGMENTS=${DGFS_MAX_SEGMENTS:-24}
+DGFS_USER_HOME=${DGFS_USER_HOME:-${HOME:?HOME is required}}
 STAMP=$(date +%Y%m%d_%H%M%S)
 CAMPAIGN="$ROOT/jcp14_mpi_$STAMP"
 SRC="$CAMPAIGN/src"
@@ -37,7 +38,7 @@ for N in 4 8; do
 done
 
 ARRAY_JOB=$(cd "$CAMPAIGN" && sbatch --parsable --array=4,8%2 \
-    --export=ALL,DGFS_ROOT="$ROOT",DGFS_ENV="$ENV_DIR",DGFS_MPI_CAMPAIGN="$CAMPAIGN",DGFS_SOLVER_SRC="$SRC",DGFS_MAX_SEGMENTS="$MAX_SEGMENTS" \
+    --export=ALL,DGFS_ROOT="$ROOT",DGFS_ENV="$ENV_DIR",DGFS_MPI_CAMPAIGN="$CAMPAIGN",DGFS_SOLVER_SRC="$SRC",DGFS_MAX_SEGMENTS="$MAX_SEGMENTS",DGFS_USER_HOME="$DGFS_USER_HOME" \
     "$SRC/hpc/run_unity_jcp14_2gpu.slurm")
 ARRAY_JOB=${ARRAY_JOB%%;*}
 PACK_JOB=$(cd "$CAMPAIGN" && sbatch --parsable --dependency="afterok:$ARRAY_JOB" \
