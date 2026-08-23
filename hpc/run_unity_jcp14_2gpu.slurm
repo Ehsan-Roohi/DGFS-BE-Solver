@@ -201,6 +201,7 @@ python "$TOOLS/combine_native_moments.py" --source-mesh "$BASE_MESH" \
 cp "$FINAL_CFG" final/dgfs.ini
 python -m frfs export final/mesh.frfsm final/bulk-final.frfss final/physical-final.vtu -d 24
 test -s final/physical-final.vtu
+cp final/dgfs.ini dgfs.ini
 cp final/mesh.frfsm mesh.frfsm
 cp final/dist-final.frfss dist-final.frfss
 cp final/bulk-final.frfss bulk-final.frfss
