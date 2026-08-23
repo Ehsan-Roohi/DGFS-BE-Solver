@@ -44,7 +44,8 @@ mkdir -p "$CUDA_CACHE_PATH" serial_bench mpi_bench mpi_partition mpi_combined pr
 
 python "$SRC/cases/jcp2019_fig14b_validation/verify_case.py"
 srun --exclusive --exact --nodes=1 --ntasks=2 --cpus-per-task="$SLURM_CPUS_PER_TASK" \
-    --gpus-per-task=1 --gpu-bind=closest nvidia-smi --query-gpu=index,name,uuid --format=csv,noheader
+    --gpus-per-task=1 --gpu-bind=closest /bin/bash -c \
+    'test -n "${CUDA_VISIBLE_DEVICES:-}"; echo "JCP14_MPI_GPU_BIND local_rank=${SLURM_LOCALID:-unknown} visible=$CUDA_VISIBLE_DEVICES"'
 
 read -r CHECKPOINT_TIME NORMALISATION < <(python - SOURCE.json <<'PY'
 import json, sys
