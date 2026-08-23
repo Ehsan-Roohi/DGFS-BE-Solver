@@ -35,6 +35,10 @@ module load openmpi/5.0.3-cuda12.6
 module load conda/latest
 source "$(conda info --base)/etc/profile.d/conda.sh"
 conda activate "$ENV_DIR"
+DGFS_USER_HOME=${DGFS_USER_HOME:?DGFS_USER_HOME is required}
+MPIEXEC=$(command -v mpirun)
+test -x "$MPIEXEC"
+export HOME="$DGFS_USER_HOME"
 export PYTHONNOUSERSITE=1 PYTHONUNBUFFERED=1 HDF5_USE_FILE_LOCKING=FALSE
 export OMP_NUM_THREADS=${SLURM_CPUS_PER_TASK:-4}
 export PYTHONPATH="$SRC${PYTHONPATH:+:$PYTHONPATH}"
@@ -45,8 +49,8 @@ mkdir -p "$CUDA_CACHE_PATH" serial_bench mpi_bench mpi_partition mpi_combined pr
 python "$SRC/cases/jcp2019_fig14b_validation/verify_case.py"
 srun --exclusive --exact --nodes=1 --ntasks=2 --cpus-per-task="$SLURM_CPUS_PER_TASK" \
     --gpus-per-task=1 --gpu-bind=closest /bin/bash -c \
-    'export CUDA_VISIBLE_DEVICES=${SLURM_LOCALID:?}; test -x "$1"; echo "JCP14_MPI_GPU_BIND local_rank=$SLURM_LOCALID visible=$CUDA_VISIBLE_DEVICES python=$1"' \
-    _ "$ENV_DIR/bin/python"
+    'export HOME=$1; export CUDA_VISIBLE_DEVICES=${SLURM_LOCALID:?}; test -x "$2"; echo "JCP14_MPI_GPU_BIND local_rank=$SLURM_LOCALID visible=$CUDA_VISIBLE_DEVICES home=$HOME python=$2"' \
+    _ "$DGFS_USER_HOME" "$ENV_DIR/bin/python"
 
 read -r CHECKPOINT_TIME NORMALISATION < <(python - SOURCE.json <<'PY'
 import json, sys
@@ -76,11 +80,8 @@ echo "JCP14_MPI_BENCH_SERIAL_START elements=$ELEMENTS interval=$CHECKPOINT_TIME,
 (
     cd serial_bench
     /usr/bin/time -f '%e' -o WALLTIME_SECONDS.txt \
-        srun --exclusive --exact --nodes=1 --ntasks=1 --cpus-per-task="$SLURM_CPUS_PER_TASK" \
-        --gpus-per-task=1 --gpu-bind=closest /bin/bash -c \
-        'export CUDA_VISIBLE_DEVICES=${SLURM_LOCALID:?}; exec "$@"' \
-        _ "$ENV_DIR/bin/python" -m frfs restart ../source_mesh.frfsm \
-        ../source_dist.frfss dgfs.ini -b cuda > solver.log 2>&1
+        env CUDA_VISIBLE_DEVICES=0 "$ENV_DIR/bin/python" -m frfs restart \
+        ../source_mesh.frfsm ../source_dist.frfss dgfs.ini -b cuda > solver.log 2>&1
 )
 test -s "serial_bench/dist-$BENCH_TAG.frfss"
 test -s "serial_bench/bulk-$BENCH_TAG.frfss"
@@ -89,9 +90,8 @@ echo "JCP14_MPI_BENCH_2GPU_START elements=$ELEMENTS interval=$CHECKPOINT_TIME,$B
 (
     cd mpi_bench
     /usr/bin/time -f '%e' -o WALLTIME_SECONDS.txt \
-        srun --exclusive --exact --nodes=1 --ntasks=2 --cpus-per-task="$SLURM_CPUS_PER_TASK" \
-        --gpus-per-task=1 --gpu-bind=closest --kill-on-bad-exit=1 /bin/bash -c \
-        'export CUDA_VISIBLE_DEVICES=${SLURM_LOCALID:?}; exec "$@"' \
+        "$MPIEXEC" --np 2 --map-by "ppr:2:node:PE=$SLURM_CPUS_PER_TASK" --bind-to core \
+        /bin/bash -c 'export CUDA_VISIBLE_DEVICES=${OMPI_COMM_WORLD_LOCAL_RANK:?}; echo "JCP14_MPI_RANK_BIND world_rank=$OMPI_COMM_WORLD_RANK local_rank=$OMPI_COMM_WORLD_LOCAL_RANK visible=$CUDA_VISIBLE_DEVICES" >&2; exec "$@"' \
         _ "$ENV_DIR/bin/python" -m frfs restart ../mpi_partition/source_mesh.frfsm \
         ../mpi_partition/source_dist.frfss dgfs.ini -b cuda > solver.log 2>&1
 )
@@ -160,9 +160,8 @@ PY
     (
         cd production
         /usr/bin/time -f '%e' -o "wall_$TAG.txt" \
-            srun --exclusive --exact --nodes=1 --ntasks=2 --cpus-per-task="$SLURM_CPUS_PER_TASK" \
-            --gpus-per-task=1 --gpu-bind=closest --kill-on-bad-exit=1 /bin/bash -c \
-            'export CUDA_VISIBLE_DEVICES=${SLURM_LOCALID:?}; exec "$@"' \
+            "$MPIEXEC" --np 2 --map-by "ppr:2:node:PE=$SLURM_CPUS_PER_TASK" --bind-to core \
+            /bin/bash -c 'export CUDA_VISIBLE_DEVICES=${OMPI_COMM_WORLD_LOCAL_RANK:?}; echo "JCP14_MPI_RANK_BIND world_rank=$OMPI_COMM_WORLD_RANK local_rank=$OMPI_COMM_WORLD_LOCAL_RANK visible=$CUDA_VISIBLE_DEVICES" >&2; exec "$@"' \
             _ "$ENV_DIR/bin/python" -m frfs restart "../$BASE_MESH" \
             "../$RESTART_DIST" "segment_$TAG.ini" -b cuda > "solver_$TAG.log" 2>&1
     )
