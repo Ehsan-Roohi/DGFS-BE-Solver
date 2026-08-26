@@ -91,8 +91,8 @@ echo "JCP14_MPI_BENCH_2GPU_START elements=$ELEMENTS interval=$CHECKPOINT_TIME,$B
     cd mpi_bench
     /usr/bin/time -f '%e' -o WALLTIME_SECONDS.txt \
         "$MPIEXEC" --np 2 --map-by "ppr:2:node" --bind-to none \
-        /bin/bash -c 'export CUDA_VISIBLE_DEVICES=${OMPI_COMM_WORLD_LOCAL_RANK:?}; echo "JCP14_MPI_RANK_BIND world_rank=$OMPI_COMM_WORLD_RANK local_rank=$OMPI_COMM_WORLD_LOCAL_RANK visible=$CUDA_VISIBLE_DEVICES" >&2; exec "$@"' \
-        _ "$ENV_DIR/bin/python" -m frfs restart ../mpi_partition/source_mesh.frfsm \
+        /bin/bash "$TOOLS/jcp14_mpi_rank_wrapper.sh" \
+        "$ENV_DIR/bin/python" -m frfs restart ../mpi_partition/source_mesh.frfsm \
         ../mpi_partition/source_dist.frfss dgfs.ini -b cuda > solver.log 2>&1
 )
 test -s "mpi_bench/dist-$BENCH_TAG.frfss"
@@ -161,8 +161,8 @@ PY
         cd production
         /usr/bin/time -f '%e' -o "wall_$TAG.txt" \
             "$MPIEXEC" --np 2 --map-by "ppr:2:node" --bind-to none \
-            /bin/bash -c 'export CUDA_VISIBLE_DEVICES=${OMPI_COMM_WORLD_LOCAL_RANK:?}; echo "JCP14_MPI_RANK_BIND world_rank=$OMPI_COMM_WORLD_RANK local_rank=$OMPI_COMM_WORLD_LOCAL_RANK visible=$CUDA_VISIBLE_DEVICES" >&2; exec "$@"' \
-            _ "$ENV_DIR/bin/python" -m frfs restart "../$BASE_MESH" \
+            /bin/bash "$TOOLS/jcp14_mpi_rank_wrapper.sh" \
+            "$ENV_DIR/bin/python" -m frfs restart "../$BASE_MESH" \
             "../$RESTART_DIST" "segment_$TAG.ini" -b cuda > "solver_$TAG.log" 2>&1
     )
     test -s "production/dist-$END_TAG.frfss"
