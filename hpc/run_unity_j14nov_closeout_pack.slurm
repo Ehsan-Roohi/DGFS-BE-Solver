@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 #SBATCH --partition=cpu
-#SBATCH --qos=short
 #SBATCH --nodes=1
 #SBATCH --ntasks=1
 #SBATCH --cpus-per-task=4
