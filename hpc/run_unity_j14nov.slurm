@@ -20,7 +20,7 @@ CAMPAIGN=${DGFS_NOV_CAMPAIGN:?DGFS_NOV_CAMPAIGN is required}
 SRC=${DGFS_SOLVER_SRC:?DGFS_SOLVER_SRC is required}
 E8=${DGFS_E8_SOURCE:?DGFS_E8_SOURCE is required}
 SOURCE="$E8/run"
-RUNS=M6_raw:32:6:none,M6_fplus:32:6:fplus,M12_fplus:32:12:fplus,M12_raw:32:12:none
+RUNS=M6_raw:32:6:none,M6_fplus:32:6:fplus,M16_fplus:32:16:fplus,M16_raw:32:16:none
 cd "$CAMPAIGN"
 
 source /etc/profile.d/modules.sh 2>/dev/null || true
@@ -70,11 +70,35 @@ echo "J14NOV_INTERVAL=$START,$END"
 
 python "$SRC/cases/jcp2019_fig14b_normal_shock/phase3/make_restart_configs.py"     --base input/dgfs.ini --residual-csv input/kinetic_residual.csv     --tstart "$START" --tend "$END" --dt-out 0.25 --runs "$RUNS" --out-dir configs
 
-echo J14NOV_COLLISION_AUDIT_START_M6
-"$ENV_DIR/bin/python" "$SRC/cases/jcp2019_fig14b_normal_shock/novelty/j14_novelty_collision.py"     --config configs/p3b_M6_raw.ini --snapshot input/dist-source.frfss     --mesh input/mesh.frfsm --output-json audit/M6.json --output-csv audit/M6.csv     --repeats 3 2>&1 | tee audit/M6.log
+"$ENV_DIR/bin/python" - "$SRC" 6 16 <<'PY'
+import re
+import sys
+from pathlib import Path
 
-echo J14NOV_COLLISION_AUDIT_START_M12
-"$ENV_DIR/bin/python" "$SRC/cases/jcp2019_fig14b_normal_shock/novelty/j14_novelty_collision.py"     --config configs/p3b_M12_raw.ini --snapshot input/dist-source.frfss     --mesh input/mesh.frfsm --output-json audit/M12.json --output-csv audit/M12.csv     --repeats 3 2>&1 | tee audit/M12.log
+rules = Path(sys.argv[1]) / "frfs" / "sphericaldesign" / "symmetric"
+supported = []
+for path in rules.glob("*.txt"):
+    match = re.search(r"-m([0-9]+)[.]txt$", path.name)
+    if match and int(match.group(1)) % 2 == 0:
+        supported.append(int(match.group(1)) // 2)
+supported = sorted(set(supported))
+requested = [int(value) for value in sys.argv[2:]]
+print("J14NOV_SUPPORTED_M_OMEGA=" + ",".join(map(str, supported)))
+missing = [value for value in requested if value not in supported]
+if missing:
+    raise SystemExit("J14NOV_UNSUPPORTED_M_OMEGA=" + ",".join(map(str, missing)))
+print("J14NOV_ANGULAR_PREFLIGHT_PASS")
+PY
+
+if [[ -s audit/M6.json && -s audit/M6.csv ]] && grep -q 'J14NOV_COLLISION_COMPLETE M=6' audit/M6.log 2>/dev/null; then
+    echo J14NOV_COLLISION_AUDIT_REUSED_M6
+else
+    echo J14NOV_COLLISION_AUDIT_START_M6
+    "$ENV_DIR/bin/python" "$SRC/cases/jcp2019_fig14b_normal_shock/novelty/j14_novelty_collision.py"     --config configs/p3b_M6_raw.ini --snapshot input/dist-source.frfss     --mesh input/mesh.frfsm --output-json audit/M6.json --output-csv audit/M6.csv     --repeats 3 2>&1 | tee audit/M6.log
+fi
+
+echo J14NOV_COLLISION_AUDIT_START_M16
+"$ENV_DIR/bin/python" "$SRC/cases/jcp2019_fig14b_normal_shock/novelty/j14_novelty_collision.py"     --config configs/p3b_M16_raw.ini --snapshot input/dist-source.frfss     --mesh input/mesh.frfsm --output-json audit/M16.json --output-csv audit/M16.csv     --repeats 3 2>&1 | tee audit/M16.log
 
 IFS=',' read -r -a SPECS <<< "$RUNS"
 RUNDIRS=()
@@ -113,7 +137,7 @@ for spec in "${SPECS[@]}"; do
     cp "run_$name/bulksol_p3b_$name-$END2.frfss" "$d/bulk-final.frfss"
 done
 
-"$ENV_DIR/bin/python" "$SRC/cases/jcp2019_fig14b_normal_shock/novelty/j14_novelty_assess.py"     --comparison results/restart_comparison.json     --audit-m6 audit/M6.json --audit-m12 audit/M12.json     --paper-cases paper_cases     --paper-reference "$SRC/cases/jcp2019_fig14b_validation/fig14_digitized.csv"     --output-dir results 2>&1 | tee results/assessment.log
+"$ENV_DIR/bin/python" "$SRC/cases/jcp2019_fig14b_normal_shock/novelty/j14_novelty_assess.py"     --comparison results/restart_comparison.json     --audit-m6 audit/M6.json --audit-m16 audit/M16.json     --paper-cases paper_cases     --paper-reference "$SRC/cases/jcp2019_fig14b_validation/fig14_digitized.csv"     --output-dir results 2>&1 | tee results/assessment.log
 
 {
     echo "benchmark=Jaiswal_Alexeenko_Hu_JCP378_2019_Figure14"
