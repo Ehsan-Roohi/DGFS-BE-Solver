@@ -26,8 +26,14 @@ state. Four otherwise identical 0.25-time-unit restarts are performed:
 
 1. angular order M_omega = 6, raw collision;
 2. angular order M_omega = 6, conservative fplus projection;
-3. angular order M_omega = 12, raw collision;
-4. angular order M_omega = 12, conservative fplus projection.
+3. supported higher angular order M_omega = 16, raw collision;
+4. supported higher angular order M_omega = 16, conservative fplus projection.
+
+The symmetric spherical-design files contain full-sphere point counts and the
+DGFS velocity mesh requests `2*M_omega` points. Consequently only stored
+half-sphere orders are valid (`1, 3, 6, 16, 24, 35, 47, 60, 78, 96` in the
+current repository). `M_omega=12` is rejected by the run preflight because no
+corresponding 24-point rule exists.
 
 ## Evidence collected
 
@@ -65,4 +71,3 @@ If the gate passes, the supported statement is:
 
 No stronger positivity, entropy, geometry, or all-flow-regime claim follows
 from this experiment.
-
