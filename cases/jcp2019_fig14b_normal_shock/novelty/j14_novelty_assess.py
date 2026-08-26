@@ -13,12 +13,12 @@ import numpy as np
 
 import compare_fig14 as fig14
 
-RUNS = ("M6_raw", "M6_fplus", "M12_raw", "M12_fplus")
+RUNS = ("M6_raw", "M6_fplus", "M16_raw", "M16_fplus")
 STYLE = {
     "M6_raw": ("#b54a45", ""),
     "M6_fplus": ("#315ca8", "8 4"),
-    "M12_raw": ("#111111", ""),
-    "M12_fplus": ("#15956f", "8 4"),
+    "M16_raw": ("#111111", ""),
+    "M16_fplus": ("#15956f", "8 4"),
 }
 
 
@@ -88,7 +88,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--comparison", type=Path, required=True)
     ap.add_argument("--audit-m6", type=Path, required=True)
-    ap.add_argument("--audit-m12", type=Path, required=True)
+    ap.add_argument("--audit-m16", type=Path, required=True)
     ap.add_argument("--paper-cases", type=Path, required=True)
     ap.add_argument("--paper-reference", type=Path, required=True)
     ap.add_argument("--output-dir", type=Path, required=True)
@@ -98,7 +98,7 @@ def main():
     comparison = json.loads(args.comparison.read_text())
     audits = {
         6: json.loads(args.audit_m6.read_text()),
-        12: json.loads(args.audit_m12.read_text()),
+        16: json.loads(args.audit_m16.read_text()),
     }
     technical = {r["run"].removeprefix("run_"): r for r in comparison["runs"]}
     cases = {name: fig14.load_case(args.paper_cases/name) for name in RUNS}
@@ -107,7 +107,7 @@ def main():
     rows = []
     metrics = {}
     for name in RUNS:
-        M = 6 if name.startswith("M6_") else 12
+        M = 6 if name.startswith("M6_") else 16
         mode = "fplus" if name.endswith("_fplus") else "raw"
         paper = {}
         vals = []
@@ -147,13 +147,13 @@ def main():
     by = {r["run"]: r for r in rows}
     gates = {
         "M6_fplus_conserves_Q": audits[6]["summary"]["fplus_max_defect"] <= 5e-12,
-        "M12_fplus_conserves_Q": audits[12]["summary"]["fplus_max_defect"] <= 5e-12,
+        "M16_fplus_conserves_Q": audits[16]["summary"]["fplus_max_defect"] <= 5e-12,
         "M6_projection_overhead_le_50pct": audits[6]["summary"]["median_projection_overhead_ratio"] <= 1.50,
-        "M12_projection_overhead_le_50pct": audits[12]["summary"]["median_projection_overhead_ratio"] <= 1.50,
+        "M16_projection_overhead_le_50pct": audits[16]["summary"]["median_projection_overhead_ratio"] <= 1.50,
         "M6_paper_accuracy_not_degraded_10pct": by["M6_fplus"]["paper_mean_rms"] <= 1.10*by["M6_raw"]["paper_mean_rms"] + 1e-6,
-        "M12_paper_accuracy_not_degraded_10pct": by["M12_fplus"]["paper_mean_rms"] <= 1.10*by["M12_raw"]["paper_mean_rms"] + 1e-6,
+        "M16_paper_accuracy_not_degraded_10pct": by["M16_fplus"]["paper_mean_rms"] <= 1.10*by["M16_raw"]["paper_mean_rms"] + 1e-6,
         "M6_overshoot_not_worse": max(by["M6_fplus"][f"{p}_overshoot"] for p in ("rho", "u", "T")) <= max(by["M6_raw"][f"{p}_overshoot"] for p in ("rho", "u", "T")) + 5e-3,
-        "M12_overshoot_not_worse": max(by["M12_fplus"][f"{p}_overshoot"] for p in ("rho", "u", "T")) <= max(by["M12_raw"][f"{p}_overshoot"] for p in ("rho", "u", "T")) + 5e-3,
+        "M16_overshoot_not_worse": max(by["M16_fplus"][f"{p}_overshoot"] for p in ("rho", "u", "T")) <= max(by["M16_raw"][f"{p}_overshoot"] for p in ("rho", "u", "T")) + 5e-3,
     }
     finite = all(
         math.isfinite(float(v))
@@ -177,7 +177,7 @@ def main():
         ),
         "claim_gate_pass": passed,
         "gates": gates,
-        "collision_audits": {str(M): audits[M]["summary"] for M in (6, 12)},
+        "collision_audits": {str(M): audits[M]["summary"] for M in (6, 16)},
         "runs": metrics,
     }
     (args.output_dir/"novelty_report.json").write_text(json.dumps(report, indent=2)+"\n")
@@ -215,4 +215,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
