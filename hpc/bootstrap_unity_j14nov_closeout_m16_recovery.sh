@@ -59,9 +59,10 @@ test -s "$SRC/hpc/run_unity_j14nov_closeout_m16_recovery.slurm"
 test -s "$SRC/hpc/run_unity_j14nov_closeout_pack.slurm"
 
 # Apply the opt-in conservative collision hook once, before the array starts.
-"$ENV_DIR/bin/python" \
-    "$SRC/cases/jcp2019_fig14b_normal_shock/novelty/solver_hook/apply_hook.py" "$SRC"
-grep -q 'DGFSCollisionInvariantProjector' "$SRC/frfs/solvers/dgfs/scattering.py"
+HOOK="$SRC/cases/jcp2019_fig14b_normal_shock/solver_hook/apply_hook.py"
+test -s "$HOOK"
+"$ENV_DIR/bin/python" "$HOOK" "$SRC"
+grep -q 'self.projector' "$SRC/frfs/solvers/dgfs/system.py"
 
 COMMON="ALL,DGFS_ROOT=$ROOT,DGFS_ENV=$ENV_DIR,DGFS_CLOSEOUT=$CLOSEOUT,DGFS_NOV_SOURCE=$ORIGINAL,DGFS_SOLVER_SRC=$SRC"
 JR=$(cd "$CLOSEOUT" && sbatch --parsable --array=0-1 --job-name=j14c-m16 \
