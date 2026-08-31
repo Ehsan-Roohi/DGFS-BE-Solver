@@ -21,6 +21,9 @@ STEADY=${DGFS_STEADY_DIR:?DGFS_STEADY_DIR is required}
 SEGMENT=${DGFS_SEGMENT:?DGFS_SEGMENT is required}
 TSTART=${DGFS_TSTART:?DGFS_TSTART is required}
 TEND=${DGFS_TEND:?DGFS_TEND is required}
+DIST_DT_OUT=${DGFS_DIST_DT_OUT:-60.0}
+MOM_DT_OUT=${DGFS_MOM_DT_OUT:-5.0}
+MIN_FREE_GB=${DGFS_MIN_FREE_GB:-60}
 
 CASES=(M16_raw M16_fplus)
 IDX=${SLURM_ARRAY_TASK_ID:?SLURM_ARRAY_TASK_ID is required}
@@ -28,6 +31,17 @@ CASE=${CASES[$IDX]}
 STAGE="$STEADY/stage_$SEGMENT/$CASE"
 mkdir -p "$STAGE"
 [[ ! -e "$STAGE/SEGMENT_SUCCESS" ]] || { echo "J14NOV_M16_STEADY_ALREADY_COMPLETE=$CASE:$SEGMENT"; exit 7; }
+
+# Refuse to burn V100 time when the shared project filesystem is too full for
+# even the reduced-cadence distribution checkpoints.
+FREE_KB=$(df -Pk "$ROOT" | awk 'NR==2 {print $4}')
+NEED_KB=$((MIN_FREE_GB * 1024 * 1024))
+if (( FREE_KB < NEED_KB )); then
+    echo "J14NOV_M16_STEADY_LOW_SPACE free_kb=$FREE_KB required_kb=$NEED_KB min_free_gb=$MIN_FREE_GB"
+    exit 9
+fi
+
+echo "J14NOV_M16_STEADY_STORAGE_POLICY case=$CASE dist_dt_out=$DIST_DT_OUT mom_dt_out=$MOM_DT_OUT min_free_gb=$MIN_FREE_GB free_kb=$FREE_KB"
 
 source /etc/profile.d/modules.sh 2>/dev/null || true
 module purge
@@ -71,7 +85,8 @@ ln -sf "$INPUT" "$STAGE/dist-source.frfss"
 "$ENV_DIR/bin/python" "$SRC/cases/jcp2019_fig14b_normal_shock/phase3/make_restart_configs.py" \
     --base "$CLOSEOUT/final_runs/run_$CASE/p3b_$CASE.ini" \
     --residual-csv "$ORIGINAL/input/kinetic_residual.csv" \
-    --tstart "$TSTART" --tend "$TEND" --dt-out 5.0 \
+    --tstart "$TSTART" --tend "$TEND" \
+    --dist-dt-out "$DIST_DT_OUT" --mom-dt-out "$MOM_DT_OUT" \
     --residual-file kinetic_residual_p3b.csv --runs "$SPEC" --out-dir "$STAGE"
 
 echo "J14NOV_M16_STEADY_RUN_START case=$CASE segment=$SEGMENT interval=$TSTART,$TEND input=$INPUT node=${SLURMD_NODENAME:-unknown}"
@@ -115,7 +130,8 @@ PY
     echo "tstart=$TSTART"
     echo "tend=$TEND"
     echo "input=$INPUT"
-    echo "checkpoint_interval=5.0"
+    echo "distribution_checkpoint_interval=$DIST_DT_OUT"
+    echo "bulk_output_interval=$MOM_DT_OUT"
     echo "residual_raw=$RF"
     echo "residual_normalized=$RN"
     echo "node=${SLURMD_NODENAME:-unknown}"
