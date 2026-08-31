@@ -1,13 +1,9 @@
 #!/usr/bin/env python3
-"""Generate the phase-3b short-restart configs (t = 30 -> 30.1) from dgfs_fig14b.ini.
+"""Generate phase-3b restart configs from a completed DGFS run.
 
-    python make_restart_configs.py --base dgfs_fig14b.ini --residual-csv kinetic_residual.csv \
-        --tstart 30 --tend 30.1 --dt-out 0.05 --out-dir configs \
-        --runs M6_raw:32:6:none,M16_raw:16:16:none,M16_fplus:16:16:fplus,M24_raw:16:24:none
-
-Each run spec is  name:Nrho:M:projection  with projection in none|euclidean|f|fplus.
-The residual normalisation uses the first finite raw residual of the production
-run (same convention as run.slurm), so f_normalized stays comparable.
+Distribution and bulk-moment output cadences may be controlled independently.
+This is important for long M16 steady extensions where full distribution
+checkpoints are large but bulk fields and residual histories are cheap.
 """
 from __future__ import annotations
 
@@ -40,7 +36,9 @@ def main() -> None:
     ap.add_argument("--residual-csv", type=Path, default=None)
     ap.add_argument("--tstart", default="30")
     ap.add_argument("--tend", default="30.1")
-    ap.add_argument("--dt-out", default="0.05")
+    ap.add_argument("--dt-out", default="0.05", help="legacy cadence used for both writers unless split cadences are supplied")
+    ap.add_argument("--dist-dt-out", default=None, help="full distribution checkpoint cadence")
+    ap.add_argument("--mom-dt-out", default=None, help="bulk-moment output cadence")
     ap.add_argument("--dt", default=None, help="override dt (default: keep base)")
     ap.add_argument("--residual-file", default="kinetic_residual_p3b.csv")
     ap.add_argument("--runs", default=DEFAULT_RUNS)
@@ -48,6 +46,8 @@ def main() -> None:
     args = ap.parse_args()
     args.out_dir.mkdir(parents=True, exist_ok=True)
     baseline = baseline_residual(args.residual_csv) if args.residual_csv else None
+    dist_dt_out = args.dist_dt_out if args.dist_dt_out is not None else args.dt_out
+    mom_dt_out = args.mom_dt_out if args.mom_dt_out is not None else args.dt_out
 
     for spec in args.runs.split(","):
         name, nrho, m, proj = spec.split(":")
@@ -63,9 +63,10 @@ def main() -> None:
         cfg.set("solver-time-integrator", "tend", str(args.tend))
         if args.dt:
             cfg.set("solver-time-integrator", "dt", str(args.dt))
-        for sect in ("soln-plugin-dgfsdistwriterstd", "soln-plugin-dgfsmomwriterstd"):
-            cfg.set(sect, "dt-out", str(args.dt_out))
-            cfg.set(sect, "basedir", ".")
+        cfg.set("soln-plugin-dgfsdistwriterstd", "dt-out", str(dist_dt_out))
+        cfg.set("soln-plugin-dgfsdistwriterstd", "basedir", ".")
+        cfg.set("soln-plugin-dgfsmomwriterstd", "dt-out", str(mom_dt_out))
+        cfg.set("soln-plugin-dgfsmomwriterstd", "basedir", ".")
         cfg.set("soln-plugin-dgfsdistwriterstd", "basename", "dist_p3b_%s-{t:.2f}" % name)
         cfg.set("soln-plugin-dgfsmomwriterstd", "basename", "bulksol_p3b_%s-{t:.2f}" % name)
         cfg.set("soln-plugin-dgfsresidualstd", "file", args.residual_file)
@@ -76,7 +77,10 @@ def main() -> None:
         out = args.out_dir / f"p3b_{name}.ini"
         with out.open("w") as stream:
             cfg.write(stream)
-        print(f"{name}: Nrho={nrho} M={m} projection={proj} -> {out}")
+        print(
+            f"{name}: Nrho={nrho} M={m} projection={proj} "
+            f"dist_dt_out={dist_dt_out} mom_dt_out={mom_dt_out} -> {out}"
+        )
 
 
 if __name__ == "__main__":
