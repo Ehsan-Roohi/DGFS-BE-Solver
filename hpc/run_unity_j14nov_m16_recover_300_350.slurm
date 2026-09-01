@@ -15,6 +15,7 @@ trap 'rc=$?; echo "J14NOV_M16_RECOVERY_FAILED rc=$rc line=$LINENO"; exit "$rc"' 
 ROOT=${DGFS_ROOT:-/project/pi_roohie_umass_edu/DGFS_BE}
 ENV_DIR=${DGFS_ENV:-$ROOT/dgfs_py310}
 CLOSEOUT=${DGFS_CLOSEOUT:?DGFS_CLOSEOUT is required}
+ORIGINAL=${DGFS_NOV_SOURCE:?DGFS_NOV_SOURCE is required}
 SRC=${DGFS_SOLVER_SRC:?DGFS_SOLVER_SRC is required}
 FAILED_STEADY=${DGFS_FAILED_STEADY:?DGFS_FAILED_STEADY is required}
 RECOVERY=${DGFS_RECOVERY_DIR:?DGFS_RECOVERY_DIR is required}
@@ -40,12 +41,12 @@ export CUDA_CACHE_PATH="$RECOVERY/.cuda-cache-$IDX"
 export PYTHONPATH="$SRC:$SRC/cases/jcp2019_fig14b_normal_shock/phase3${PYTHONPATH:+:$PYTHONPATH}"
 mkdir -p "$CUDA_CACHE_PATH"
 
-# Recovery is deliberately tiny, but refuse to start if the shared project is critically full.
 FREE_KB=$(df -Pk "$ROOT" | awk 'NR==2{print $4}')
 (( FREE_KB >= 20*1024*1024 )) || { echo "J14NOV_M16_RECOVERY_LOW_SPACE free_kb=$FREE_KB"; exit 20; }
 
 INPUT="$FAILED_STEADY/stage_1/$CASE/dist_p3b_$CASE-${TSTART}.frfss"
 test -s "$INPUT"
+test -s "$ORIGINAL/input/kinetic_residual.csv"
 case "$CASE" in
     M16_raw) SPEC=M16_raw:32:16:none ;;
     M16_fplus) SPEC=M16_fplus:32:16:fplus ;;
@@ -56,7 +57,7 @@ cp "$CLOSEOUT/final_runs/run_$CASE/mesh.frfsm" "$OUT/mesh.frfsm"
 ln -sf "$INPUT" "$OUT/dist-source.frfss"
 "$ENV_DIR/bin/python" "$SRC/cases/jcp2019_fig14b_normal_shock/phase3/make_restart_configs.py" \
     --base "$CLOSEOUT/final_runs/run_$CASE/p3b_$CASE.ini" \
-    --residual-csv "$FAILED_STEADY/stage_1/$CASE/kinetic_residual_p3b.csv" \
+    --residual-csv "$ORIGINAL/input/kinetic_residual.csv" \
     --tstart "$TSTART" --tend "$TEND" \
     --dist-dt-out 50.0 --mom-dt-out 5.0 \
     --residual-file kinetic_residual_recovery.csv --runs "$SPEC" --out-dir "$OUT"
@@ -68,7 +69,7 @@ t0=$(date +%s.%N)
   "$ENV_DIR/bin/python" -m frfs restart mesh.frfsm dist-source.frfss "p3b_$CASE.ini" -b cuda 2>&1 | tee solver.log
 )
 t1=$(date +%s.%N)
-printf 'wall_seconds=%.3f\n' "$(python -c 'import sys; print(float(sys.argv[2])-float(sys.argv[1]))' "$t0" "$t1")" > "$OUT/WALLTIME.txt"
+"$ENV_DIR/bin/python" -c 'import sys; print(f"wall_seconds={float(sys.argv[2])-float(sys.argv[1]):.3f}")' "$t0" "$t1" > "$OUT/WALLTIME.txt"
 
 END2=$("$ENV_DIR/bin/python" -c 'import sys; print(f"{float(sys.argv[1]):.2f}")' "$TEND")
 FINAL_DIST="$OUT/dist_p3b_$CASE-$END2.frfss"
