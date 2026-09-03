@@ -16,7 +16,7 @@ M16F=$STEADY/stage_1/M16_fplus
 
 latest_named () {
     local dir=$1 pat=$2
-    find "$dir" -maxdepth 2 -type f -name "$pat" -printf '%p\n' 2>/dev/null | sort -V | tail -1
+    find "$dir" -type f -name "$pat" -printf '%p\n' 2>/dev/null | sort -V | tail -1
 }
 
 M6R_S=$(latest_named "$M6R" 'dist_p3b_M6_raw-*.frfss')
@@ -28,8 +28,12 @@ EUC_S=$(find "$CLOSE" -type f -path '*/m6_euclidean_steady_*/segment_*/dist_p3b_
 EUC_DIR=$(dirname "$EUC_S")
 EUC_CFG=$EUC_DIR/p3b_M6_euclidean_steady.ini
 
-M16R_S=$M16R/dist_p3b_M16_raw-340.25.frfss
-M16F_S=$M16F/dist_p3b_M16_fplus-340.25.frfss
+# M16 storage-safe campaign wrote full distributions sparsely (latest full checkpoint is
+# expected near t=300.25) while cheap bulk moments continued through t=340.25.  For
+# high-order moments/negativity we must use an actual full-distribution file, so resolve
+# the newest one that exists rather than hard-coding t=340.25.
+M16R_S=$(latest_named "$M16R" 'dist_p3b_M16_raw-*.frfss')
+M16F_S=$(latest_named "$M16F" 'dist_p3b_M16_fplus-*.frfss')
 
 for p in \
  "$M6R/p3b_M6_raw.ini" "$M6R/mesh.frfsm" "$M6R_S" \
@@ -46,12 +50,13 @@ SCRIPT=$OUT/j14_steady_projection_compare_aligned.py
 curl -fsSL "https://raw.githubusercontent.com/Ehsan-Roohi/DGFS-BE-Solver/$REF/cases/jcp2019_fig14b_normal_shock/novelty/j14_steady_projection_compare_aligned.py" -o "$SCRIPT"
 "$ENV_DIR/bin/python" -m py_compile "$SCRIPT"
 
-echo "===== INPUT STEADY SNAPSHOTS ====="
+echo "===== INPUT STEADY/FULL-DISTRIBUTION SNAPSHOTS ====="
 echo "M6_raw=$M6R_S"
 echo "M6_euclidean=$EUC_S"
 echo "M6_fplus=$M6F_S"
 echo "M16_raw=$M16R_S"
 echo "M16_fplus=$M16F_S"
+echo "NOTE: M16 full distributions are sparse storage-safe checkpoints; final M16 bulk-field stationarity was independently verified at 335.25->340.25."
 
 cd "$OUT"
 "$ENV_DIR/bin/python" "$SCRIPT" \
