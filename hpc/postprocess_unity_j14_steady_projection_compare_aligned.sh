@@ -4,6 +4,7 @@ trap 'rc=$?; echo "STEADY_PROJECTION_ALIGNED_FAILED rc=$rc line=$LINENO"; exit "
 
 ROOT=${DGFS_ROOT:-/project/pi_roohie_umass_edu/DGFS_BE}
 ENV_DIR=${DGFS_ENV:-$ROOT/dgfs_py310}
+POST_PY=${DGFS_POST_PYTHON:-$ENV_DIR/bin/python}
 CLOSE=${DGFS_CLOSEOUT:-$ROOT/j14novclose_20260826_211439}
 STEADY=${DGFS_STEADY_DIR:-$CLOSE/m16_steady_20260831_125816}
 OUT=${DGFS_OUTPUT_DIR:-$PWD}
@@ -45,10 +46,19 @@ do
     [[ -s "$p" ]] || { echo "MISSING_REQUIRED_FILE=$p"; exit 3; }
 done
 
+[[ -x "$POST_PY" ]] || { echo "POSTPROCESS_PYTHON_NOT_EXECUTABLE=$POST_PY"; exit 4; }
+"$POST_PY" - <<'PY'
+import h5py, matplotlib, numpy
+print('POSTPROCESS_IMPORTS=PASS')
+print('numpy='+numpy.__version__)
+print('h5py='+h5py.__version__)
+print('matplotlib='+matplotlib.__version__)
+PY
+
 mkdir -p "$OUT"
 SCRIPT=$OUT/j14_steady_projection_compare_aligned.py
 curl -fsSL "https://raw.githubusercontent.com/Ehsan-Roohi/DGFS-BE-Solver/$REF/cases/jcp2019_fig14b_normal_shock/novelty/j14_steady_projection_compare_aligned.py" -o "$SCRIPT"
-"$ENV_DIR/bin/python" -m py_compile "$SCRIPT"
+"$POST_PY" -m py_compile "$SCRIPT"
 
 echo "===== INPUT STEADY/FULL-DISTRIBUTION SNAPSHOTS ====="
 echo "M6_raw=$M6R_S"
@@ -58,8 +68,9 @@ echo "M16_raw=$M16R_S"
 echo "M16_fplus=$M16F_S"
 echo "NOTE: M16 full distributions are sparse storage-safe checkpoints; final M16 bulk-field stationarity was independently verified at 335.25->340.25."
 
+echo "POSTPROCESS_PYTHON=$POST_PY"
 cd "$OUT"
-"$ENV_DIR/bin/python" "$SCRIPT" \
+"$POST_PY" "$SCRIPT" \
  --M6_raw-config "$M6R/p3b_M6_raw.ini" --M6_raw-mesh "$M6R/mesh.frfsm" --M6_raw-snapshot "$M6R_S" \
  --M6_euclidean-config "$EUC_CFG" --M6_euclidean-mesh "$EUC_DIR/mesh.frfsm" --M6_euclidean-snapshot "$EUC_S" \
  --M6_fplus-config "$M6F/p3b_M6_fplus.ini" --M6_fplus-mesh "$M6F/mesh.frfsm" --M6_fplus-snapshot "$M6F_S" \
